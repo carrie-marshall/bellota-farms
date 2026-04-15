@@ -1759,8 +1759,9 @@ function autoAssignHuts(){
   eligible.forEach(({b,occ})=>{
     let assigned=false;
     for(let h=1;h<=NUM_HUTS;h++){
+      const hStr=String(h);
       const hutBusy=eligible.some(({b:other,occ:otherOcc})=>{
-        if(other.id===b.id||other.hutAssignment!==h)return false;
+        if(other.id===b.id||other.hutAssignment!==hStr)return false;
         const checkEnd=addDays(occ.release,CLEAN_GAP);
         const otherEnd=addDays(otherOcc.release,CLEAN_GAP);
         return occ.moveIn<=otherEnd&&otherOcc.moveIn<=checkEnd;
@@ -3685,6 +3686,10 @@ function confirmRestore(){
   renderGantt();renderHutTable();renderBreeders();
   toast(`Restore complete — ${litters.length} litter${litters.length===1?'':'s'}, ${breeders.length} female${breeders.length===1?'':'s'} loaded`);
 }
+
+// Migrate hutAssignment from integer to string (one-time fix for data saved before v48)
+breeders.forEach(b=>{if(typeof b.hutAssignment==='number')b.hutAssignment=String(b.hutAssignment);});
+if(breeders.some(b=>typeof b.hutAssignment==='number'===false&&b.hutAssignment!==null))save();
 
 scrubIntegrity();
 renderAll();
