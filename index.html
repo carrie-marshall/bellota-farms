@@ -228,6 +228,61 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
 .fg{grid-template-columns:1fr;}th,td{padding:4px 3px;}.app-header h1{font-size:16px;}.tally-grid{grid-template-columns:repeat(2,1fr);}.dates-grid{grid-template-columns:1fr 1fr;}.gantt-hut-label{width:56px;font-size:10px;}}
 @media print{.header-acts,.btn,.tabs,.expbar,.top-nav,.modal-ov{display:none!important;}.lbody{display:block!important;}.tab-panel{display:block!important;page-break-inside:avoid;}}
 
+/* ── HERD & LOCATIONS ─────────────────────────────────────────────────────── */
+.hl-section{margin-bottom:24px;}
+.hl-section-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:var(--radius) var(--radius) 0 0;background:var(--blue-dark);color:#fff;margin-bottom:0;}
+.hl-section-hdr h3{margin:0;font-size:14px;font-weight:700;font-family:'DM Sans',sans-serif;color:#fff;}
+.hl-section-hdr .hl-count{display:inline-block;background:rgba(255,255,255,.2);border-radius:10px;padding:1px 8px;font-size:11px;font-weight:600;margin-left:6px;}
+.hl-section-hdr .hl-subtitle{font-size:11px;opacity:.75;margin-top:2px;}
+.litter-hdr{background:var(--orange)!important;}
+.growing-hdr{background:var(--green)!important;}
+.boar-hdr{background:var(--text-mid)!important;}
+.animal-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--paper);font-size:13px;}
+.animal-row:last-child{border-bottom:none;border-radius:0 0 var(--radius) var(--radius);}
+.animal-row:nth-child(even){background:var(--gray-bg);}
+.animal-row.deceased{opacity:.55;}
+.animal-name{font-weight:700;color:var(--blue-dark);font-size:13px;}
+.animal-sub{font-size:11px;color:var(--text-light);margin-top:2px;line-height:1.4;}
+.loc-current{font-weight:600;color:var(--blue-dark);font-size:12px;}
+.loc-since{font-size:10px;color:var(--text-light);margin-top:1px;}
+.loc-none{font-size:11px;color:var(--text-light);font-style:italic;}
+.loc-log-btn{font-size:11px;padding:3px 10px;background:var(--blue-pale);border:1px solid var(--blue-light);color:var(--blue-dark);border-radius:4px;cursor:pointer;white-space:nowrap;}
+.loc-log-btn:hover{background:var(--blue-light);}
+/* Location log modal list */
+.loc-entry{display:grid;grid-template-columns:110px 1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.loc-entry:last-child{border-bottom:none;}
+.loc-log-list{max-height:320px;overflow-y:auto;margin-bottom:12px;}
+/* Census bar */
+.census-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--blue-pale);border:1px solid var(--blue-light);border-radius:var(--radius);margin-bottom:12px;}
+/* Cohort checklist */
+.cohort-checklist{max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;margin-bottom:12px;}
+.cohort-check-item{display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;}
+.cohort-check-item:last-child{border-bottom:none;}
+.cohort-check-item:hover{background:var(--blue-pale);}
+
+/* ── TASK LIST ────────────────────────────────────────────────────────────── */
+.task-col-hdr{display:grid;grid-template-columns:32px 110px 1fr 160px 120px 100px;gap:8px;padding:6px 12px;background:var(--blue-dark);color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-radius:var(--radius) var(--radius) 0 0;}
+.task-row{display:grid;grid-template-columns:32px 110px 1fr 160px 120px 100px;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;background:var(--paper);}
+.task-row:nth-child(even){background:var(--gray-bg);}
+.task-row.completed{opacity:.45;text-decoration:line-through;}
+.task-row.overdue{background:#fff5f5;}
+.task-row.due-soon{background:#fffbf0;}
+.task-section{margin-bottom:20px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.task-section-hdr{padding:10px 14px;background:var(--blue-pale);border-bottom:1px solid var(--border);font-weight:700;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;color:var(--blue-dark);}
+.task-section-hdr:hover{background:var(--blue-light);}
+.task-type-badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap;}
+.task-name{font-weight:600;font-size:12px;}
+.task-note{font-size:10px;color:var(--text-light);margin-top:2px;}
+.task-animal{font-size:11px;color:var(--text-mid);}
+.task-due{font-family:'DM Mono',monospace;font-size:11px;font-weight:600;}
+.task-due.overdue{color:var(--red);}
+.task-due.soon{color:var(--orange);}
+.task-due.ok{color:var(--green);}
+@media(max-width:700px){
+  .animal-row{grid-template-columns:1fr auto;}
+  .task-col-hdr{display:none;}
+  .task-row{grid-template-columns:1fr;gap:3px;}
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
