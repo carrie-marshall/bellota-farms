@@ -235,6 +235,8 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
 <div class="app-header">
   <div><h1>Bellota Farms — Litter Records</h1><div class="sub">Ibérico Farrowing &amp; Piglet Tracking · California</div></div>
   <div class="header-acts">
+    <button class="btn btn-ghost btn-sm" onclick="backupData()">⬇ Backup</button>
+    <button class="btn btn-ghost btn-sm" onclick="openRestoreModal()">⬆ Restore</button>
     <button class="btn btn-ghost btn-sm" onclick="openExportModal()">Export / Print</button>
     <button class="btn btn-primary" onclick="openNLModal()">+ New Litter</button>
   </div>
@@ -436,6 +438,27 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
   <div class="mfooter">
     <button class="btn btn-muted btn-sm" onclick="cancelNLModal()">Cancel</button>
     <button class="btn btn-primary" onclick="createLitter()">Create Litter Record →</button>
+  </div>
+</div></div>
+
+<!-- RESTORE MODAL -->
+<div class="modal-ov" id="restore-modal"><div class="modal" style="max-width:460px">
+  <h2>Restore from Backup</h2>
+  <p style="font-size:13px;color:var(--text-mid);margin-bottom:16px">Select a <strong>.json</strong> backup file previously downloaded from this app. <strong style="color:var(--red)">This will replace all current data.</strong></p>
+  <div id="restore-dropzone" style="border:2px dashed var(--border);border-radius:8px;padding:32px 20px;text-align:center;cursor:pointer;transition:all .15s;margin-bottom:16px"
+    onclick="document.getElementById('restore-file-input').click()"
+    ondragover="event.preventDefault();this.style.borderColor='var(--blue-dark)';this.style.background='var(--blue-pale)'"
+    ondragleave="this.style.borderColor='var(--border)';this.style.background=''"
+    ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='';handleRestoreFile(event.dataTransfer.files[0])">
+    <div style="font-size:32px;margin-bottom:8px">📂</div>
+    <div style="font-weight:600;color:var(--blue-dark)">Click to choose a backup file</div>
+    <div style="font-size:12px;color:var(--text-light);margin-top:4px">or drag and drop a .json file here</div>
+  </div>
+  <input type="file" id="restore-file-input" accept=".json" style="display:none" onchange="handleRestoreFile(this.files[0])">
+  <div id="restore-preview" style="display:none;background:var(--gray-bg);border-radius:6px;padding:12px;font-size:12px;margin-bottom:16px"></div>
+  <div class="mfooter">
+    <button class="btn btn-muted btn-sm" onclick="closeModal('restore-modal')">Cancel</button>
+    <button class="btn btn-danger" id="restore-confirm-btn" style="display:none" onclick="confirmRestore()">Replace All Data →</button>
   </div>
 </div></div>
 
@@ -3556,6 +3579,82 @@ function exportExcel(){
   closeModal('exp-modal');toast('Excel file downloaded');
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// BACKUP & RESTORE
+// ─────────────────────────────────────────────────────────────────────────────
+const BACKUP_KEYS=['bf_litters_v6','bf_breeders_v2','bf_locations','bf_boars','bf_tasks','bf_estimator_v2'];
+
+function backupData(){
+  const snapshot={
+    _version:1,
+    _app:'BellotaFarms',
+    _date:new Date().toISOString(),
+    _litterCount:litters.length,
+    _breederCount:breeders.length,
+  };
+  BACKUP_KEYS.forEach(k=>{
+    const v=localStorage.getItem(k);
+    if(v)snapshot[k]=v;
+  });
+  const json=JSON.stringify(snapshot,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`BellotaFarms_Backup_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  toast(`Backup downloaded — ${litters.length} litter${litters.length===1?'':'s'}, ${breeders.length} female${breeders.length===1?'':'s'}`);
+}
+
+let _pendingRestoreData=null;
+
+function openRestoreModal(){
+  _pendingRestoreData=null;
+  document.getElementById('restore-preview').style.display='none';
+  document.getElementById('restore-confirm-btn').style.display='none';
+  const fi=document.getElementById('restore-file-input');if(fi)fi.value='';
+  openModal('restore-modal');
+}
+
+function handleRestoreFile(file){
+  if(!file)return;
+  if(!file.name.endsWith('.json')){toast('Please select a .json backup file');return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(data._app!=='BellotaFarms'){toast('This does not appear to be a Bellota Farms backup file');return;}
+      _pendingRestoreData=data;
+      const prev=document.getElementById('restore-preview');
+      const dateStr=data._date?new Date(data._date).toLocaleString():'unknown date';
+      prev.innerHTML=`<div style="font-weight:700;color:var(--blue-dark);margin-bottom:6px">✓ Valid backup file</div>
+        <div><strong>Backed up:</strong> ${dateStr}</div>
+        <div><strong>Litters:</strong> ${data._litterCount??'?'}</div>
+        <div><strong>Females:</strong> ${data._breederCount??'?'}</div>
+        <div style="margin-top:8px;color:var(--red);font-size:11px">⚠ This will replace all data currently in this browser.</div>`;
+      prev.style.display='block';
+      document.getElementById('restore-confirm-btn').style.display='inline-block';
+    }catch(err){toast('Could not read file — make sure it is a valid Bellota Farms backup');}
+  };
+  reader.readAsText(file);
+}
+
+function confirmRestore(){
+  if(!_pendingRestoreData)return;
+  BACKUP_KEYS.forEach(k=>{if(_pendingRestoreData[k]!==undefined)localStorage.setItem(k,_pendingRestoreData[k]);});
+  // Reload all in-memory state
+  litters=JSON.parse(localStorage.getItem('bf_litters_v6')||'[]');
+  breeders=JSON.parse(localStorage.getItem('bf_breeders_v2')||'[]');
+  locationNames=JSON.parse(localStorage.getItem('bf_locations')||'[]');
+  manualBoars=JSON.parse(localStorage.getItem('bf_boars')||'[]');
+  _taskState=JSON.parse(localStorage.getItem('bf_tasks')||'{}');
+  estPigs=JSON.parse(localStorage.getItem('bf_estimator_v2')||'[]');
+  _pendingRestoreData=null;
+  closeModal('restore-modal');
+  scrubIntegrity();
+  renderAll();
+  renderGantt();renderHutTable();renderBreeders();
+  toast(`Restore complete — ${litters.length} litter${litters.length===1?'':'s'}, ${breeders.length} female${breeders.length===1?'':'s'} loaded`);
+}
 
 scrubIntegrity();
 renderAll();
