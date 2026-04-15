@@ -533,13 +533,16 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
     </div>
     <div class="fgrp">
       <label>Assigned Hut</label>
-      <select id="bar-hut">
+      <select id="bar-hut" onchange="barHutChange(this.value)">
         <option value="">Unassigned</option>
-        <option value="1">Hut 1</option>
-        <option value="2">Hut 2</option>
-        <option value="3">Hut 3</option>
-        <option value="4">Hut 4</option>
+        <option value="1">Barn — Hut 1</option>
+        <option value="2">Barn — Hut 2</option>
+        <option value="3">Barn — Hut 3</option>
+        <option value="4">Barn — Hut 4</option>
+        <option value="5">Barn — Hut 5</option>
+        <option value="other">Other (custom)…</option>
       </select>
+      <input type="text" id="bar-hut-custom" placeholder="e.g. South Paddock Hut" style="display:none;margin-top:6px;width:100%">
     </div>
   </div>
   <div style="font-size:11px;color:var(--text-light);margin-top:8px">Changes update the calendar and conflict checker immediately on Save.</div>
@@ -646,7 +649,7 @@ const PIG_VAXS=[
   {id:'pv5',label:'FluSure XP / Erysipelas',dose:'2cc IM', anchor:'wean', offsetDays:28,note:'4 wks post-wean'},
 ];
 const DESIG_OPTS=['undecided','Breeder','Boar','Curing','Campo Reserva','Young Feeder','Young Whole Pig','Montanera Finished'];
-const NUM_HUTS=4;
+const NUM_HUTS=5;
 const POST_FARROW_DAYS=14; // default post-farrow stay (14 days after last possible farrow)
 const FARROW_WINDOW_DAYS=3; // farrow window length in days
 const FARROW_OFFSET=113;    // days after final attempt START date to farrow window start
@@ -1659,12 +1662,13 @@ function renderBreeders(){
       <div class="date-item">
         <div class="di-label">Assigned Hut</div>
         <div class="di-val ${b.hutAssignment?'ok':''}">
-          ${b.hutAssignment?`Hut ${b.hutAssignment}`:'Unassigned'}
+          ${b.hutAssignment?(['1','2','3','4','5'].includes(b.hutAssignment)?`Barn — Hut ${b.hutAssignment}`:b.hutAssignment):'Unassigned'}
         </div>
         <div class="di-sub">
           <select style="width:auto;font-size:11px;padding:2px 4px;margin-top:3px" onchange="manualAssignHut('${b.id}',this.value)">
             <option value="">— reassign —</option>
-            ${[1,2,3,4].map(n=>`<option value="${n}" ${b.hutAssignment===n?'selected':''}>Hut ${n}</option>`).join('')}
+            ${'1,2,3,4,5'.split(',').map(n=>`<option value="${n}" ${b.hutAssignment===n?'selected':''}>Barn — Hut ${n}</option>`).join('')}
+              <option value="other" ${b.hutAssignment&&!['1','2','3','4','5'].includes(b.hutAssignment)?'selected':''}>Other${b.hutAssignment&&!['1','2','3','4','5'].includes(b.hutAssignment)?' ('+b.hutAssignment+')':''}…</option>
           </select>
         </div>
       </div>
@@ -1691,7 +1695,7 @@ function renderBreeders(){
       <div class="vax-mini">${Array.isArray(vaxPips)?vaxPips.join(''):''}</div>
       <span style="font-size:10px;color:var(--text-light)">● done ○ pending ● overdue</span>
     </div>`:''}
-    ${b.hutAssignment&&b.confirmed&&breedDate&&hutConflict(b)?`<div class="conflict-banner">⚠ Hut ${b.hutAssignment} conflict — another sow overlaps this period. Please reassign.</div>`:''}`;
+    ${b.hutAssignment&&b.confirmed&&breedDate&&hutConflict(b)?`<div class="conflict-banner">⚠ ${b.hutAssignment} conflict — another sow overlaps this period. Please reassign.</div>`:''}`;
     con.appendChild(card);
   });
 }
@@ -1761,7 +1765,7 @@ function autoAssignHuts(){
         const otherEnd=addDays(otherOcc.release,CLEAN_GAP);
         return occ.moveIn<=otherEnd&&otherOcc.moveIn<=checkEnd;
       });
-      if(!hutBusy){b.hutAssignment=h;assigned=true;break;}
+      if(!hutBusy){b.hutAssignment=String(h);assigned=true;break;}
     }
     if(!assigned)conflicts.push(b.sow);
   });
@@ -1792,8 +1796,14 @@ function undoAutoAssign(){
 
 function manualAssignHut(bid,val){
   const b=breeders.find(x=>x.id===bid);if(!b)return;
-  b.hutAssignment=val?parseInt(val):null;
-  // Re-sync location so hut note updates
+  if(val==='other'){
+    const custom=prompt('Enter the name of the farrowing space (e.g. South Paddock Hut):','');
+    if(!custom||!custom.trim()){renderBreeders();return;} // cancelled — re-render to reset select
+    b.hutAssignment=custom.trim();
+  } else {
+    b.hutAssignment=val||null;
+  }
+  save();
   syncBreederLocations(b,null,null);
   renderGantt();renderHutTable();renderBreeders();
 }
@@ -1857,18 +1867,27 @@ function updateBreederDate(bid,field,val){
   renderGantt();renderHutTable();
 }
 
+function barHutChange(val){
+  const ci=document.getElementById('bar-hut-custom');
+  if(!ci)return;
+  ci.style.display=val==='other'?'block':'none';
+  if(val!=='other')ci.value='';
+}
+
+
 function saveBarEdit(){
   const bid=document.getElementById('bar-bid').value;
   const b=breeders.find(x=>x.id===bid);if(!b)return;
   const mi=document.getElementById('bar-movein').value;
   const mo=document.getElementById('bar-moveout').value;
-  const hut=document.getElementById('bar-hut').value;
+  const hutSel=document.getElementById('bar-hut').value;
+  const hut=hutSel==='other'?(document.getElementById('bar-hut-custom').value.trim()||null):hutSel;
   if(mo&&mi&&mo<mi){toast('Move-out must be after move-in');return;}
   const prevMoveIn=b.actualMoveIn;
   const prevMoveOut=b.actualMoveOut;
   b.actualMoveIn=mi||null;
   b.actualMoveOut=mo||null;
-  b.hutAssignment=hut?parseInt(hut):null;
+  b.hutAssignment=hut||null;
   syncBreederLocations(b,prevMoveIn,prevMoveOut);
   closeModal('bar-modal');
   renderGantt();renderHutTable();renderBreeders();
@@ -1898,7 +1917,14 @@ function openBarModal(bid){
   document.getElementById('bar-modal-title').textContent=`Edit Hut Dates — ${b.sow}`;
   document.getElementById('bar-movein').value=occ.moveIn;
   document.getElementById('bar-moveout').value=occ.release;
-  document.getElementById('bar-hut').value=b.hutAssignment||'';
+  const knownHuts=['1','2','3','4','5'];
+  if(b.hutAssignment&&!knownHuts.includes(b.hutAssignment)){
+    document.getElementById('bar-hut').value='other';
+    const ci=document.getElementById('bar-hut-custom');if(ci){ci.style.display='block';ci.value=b.hutAssignment;}
+  } else {
+    document.getElementById('bar-hut').value=b.hutAssignment||'';
+    const ci=document.getElementById('bar-hut-custom');if(ci){ci.style.display='none';ci.value='';}
+  }
   document.getElementById('bar-movein-calc').textContent=`Calculated: ${fmtDate(occ.calcMoveIn)}`;
   document.getElementById('bar-moveout-calc').textContent=`Calculated: ${fmtDate(occ.calcRelease)}`;
   openModal('bar-modal');
@@ -1971,8 +1997,11 @@ function renderGantt(){
     daysHTML+=`<div class="gantt-day ${cls}" style="width:${DAY_PX}px;min-width:${DAY_PX}px">${d.getDate()}</div>`;
   }
 
-  // Build hut rows
-  const hutRows=[1,2,3,4].map(hutNum=>{
+  // Build hut rows — dynamically from all known slots (barn 1-5 + any custom names)
+  const barnHuts=['1','2','3','4','5'];
+  const customHuts=[...new Set(items.map(x=>x.b.hutAssignment).filter(h=>h&&!barnHuts.includes(h)))].sort();
+  const allHutSlots=[...barnHuts,...customHuts];
+  const hutRows=allHutSlots.map(hutNum=>{
     const hutItems=items.filter(x=>x.b.hutAssignment===hutNum);
     let barsHTML='';
     hutItems.forEach(({b,occ,color})=>{
@@ -2000,7 +2029,7 @@ function renderGantt(){
     });
     const unassigned=items.filter(x=>!x.b.hutAssignment);
     return`<div class="gantt-hut-row" style="--dpx:${DAY_PX}px">
-      <div class="gantt-hut-label">Hut ${hutNum}</div>
+      <div class="gantt-hut-label">${barnHuts.includes(hutNum)?'Hut '+hutNum:hutNum}</div>
       <div class="gantt-hut-track" style="width:${totalDays*DAY_PX}px">
         ${barsHTML}
         ${hutNum===1&&todayOffset>=0&&todayOffset<totalDays?`<div class="gantt-today-line" style="left:${todayOffset*DAY_PX}px"></div>`:''}
@@ -2072,7 +2101,8 @@ function renderHutTable(){
       <td>
         <select style="font-size:12px;padding:3px 6px" onchange="manualAssignHut('${b.id}',this.value)">
           <option value="">Unassigned</option>
-          ${[1,2,3,4].map(n=>`<option value="${n}" ${b.hutAssignment===n?'selected':''}>Hut ${n}${conflict&&b.hutAssignment===n?' ⚠':''}</option>`).join('')}
+          ${['1','2','3','4','5'].map(n=>`<option value="${n}" ${b.hutAssignment===n?'selected':''}>Barn — Hut ${n}${conflict&&b.hutAssignment===n?' ⚠':''}</option>`).join('')}
+          <option value="other" ${b.hutAssignment&&!['1','2','3','4','5'].includes(b.hutAssignment)?'selected':''}>Other${b.hutAssignment&&!['1','2','3','4','5'].includes(b.hutAssignment)?' ('+b.hutAssignment+')':''}…</option>
         </select>
       </td>
       <td>${conflict?`<span style="color:var(--red);font-size:11px;font-weight:600">⚠ Conflict</span>`:`<span style="color:var(--green);font-size:11px">OK</span>`}</td>
