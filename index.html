@@ -1376,6 +1376,9 @@ function setWeanDate(lid,val){
   const l=getL(lid);if(!l)return;
   l.weanDate=val;
 
+  // Auto-archive when weaned, auto-unarchive if wean date is cleared
+  l.archived=!!val;
+
   // When a wean date is set, propagate the litter's last known location
   // to each piglet's individual locationLog (if they don't already have one)
   if(val&&l.locationLog&&l.locationLog.length){
@@ -1399,6 +1402,7 @@ function setWeanDate(lid,val){
   const wcFmt=document.getElementById(`wcp-wfmt-${lid}`);if(wcFmt)wcFmt.textContent=val?fmtDate(val):'';
   const vaxWd=document.getElementById(`vax-wd-${lid}`);if(vaxWd)vaxWd.textContent=val?fmtDate(val):'set on Weaning tab';
   renderPigVax(l);renderAll();renderTasks();
+  if(val)toast(`${l.sow}'s litter weaned and archived — find it in Archived Litters below`);
 }
 function autoExpFarrowLitter(lid){
   const l=getL(lid);if(!l||!l.breedDate||l.expectedFarrow)return;
@@ -3767,6 +3771,9 @@ function confirmRestore(){
 // Migrate hutAssignment from integer to string (one-time fix for data saved before v48)
 breeders.forEach(b=>{if(typeof b.hutAssignment==='number')b.hutAssignment=String(b.hutAssignment);});
 if(breeders.some(b=>typeof b.hutAssignment==='number'===false&&b.hutAssignment!==null))save();
+
+// Auto-archive any litter that has a wean date but isn't marked archived yet
+litters.forEach(l=>{if(l.weanDate&&!l.archived)l.archived=true;});
 
 scrubIntegrity();
 renderAll();
