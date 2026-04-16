@@ -237,10 +237,12 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
 .litter-hdr{background:var(--orange)!important;}
 .growing-hdr{background:var(--green)!important;}
 .boar-hdr{background:var(--text-mid)!important;}
-.animal-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--paper);font-size:13px;}
+.animal-row{display:grid;grid-template-columns:1.4fr 1fr auto 80px;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--paper);}
 .animal-row:last-child{border-bottom:none;border-radius:0 0 var(--radius) var(--radius);}
 .animal-row:nth-child(even){background:var(--gray-bg);}
 .animal-row.deceased{opacity:.55;}
+.animal-row.departed{background:#fffbf0;}
+.animal-row.departed{background:#fffdf0;}
 .animal-name{font-weight:700;color:var(--blue-dark);font-size:13px;}
 .animal-sub{font-size:11px;color:var(--text-light);margin-top:2px;line-height:1.4;}
 .loc-current{font-weight:600;color:var(--blue-dark);font-size:12px;}
@@ -261,12 +263,16 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
 .cohort-check-item:hover{background:var(--blue-pale);}
 
 /* ── TASK LIST ────────────────────────────────────────────────────────────── */
-.task-col-hdr{display:grid;grid-template-columns:32px 110px 1fr 160px 120px 100px;gap:8px;padding:6px 12px;background:var(--blue-dark);color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-radius:var(--radius) var(--radius) 0 0;}
-.task-row{display:grid;grid-template-columns:32px 110px 1fr 160px 120px 100px;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;background:var(--paper);}
+.task-col-hdr{display:grid;grid-template-columns:28px 100px 1fr 180px 110px 110px;gap:10px;padding:8px 14px;background:var(--blue-dark);color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-radius:var(--radius) var(--radius) 0 0;}
+.task-row{display:grid;grid-template-columns:28px 100px 1fr 180px 110px 110px;gap:10px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border);font-size:12px;background:var(--paper);}
 .task-row:nth-child(even){background:var(--gray-bg);}
 .task-row.completed{opacity:.45;text-decoration:line-through;}
 .task-row.overdue{background:#fff5f5;}
 .task-row.due-soon{background:#fffbf0;}
+.task-row.skipped{opacity:.55;background:var(--gray-bg);}
+.task-row.skipped .task-name{text-decoration:line-through;}
+.task-due.skipped-due{color:var(--text-light);text-decoration:line-through;}
+.task-outcome-col{display:flex;flex-direction:column;gap:2px;}
 .task-section{margin-bottom:20px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
 .task-section-hdr{padding:10px 14px;background:var(--blue-pale);border-bottom:1px solid var(--border);font-weight:700;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;color:var(--blue-dark);}
 .task-section-hdr:hover{background:var(--blue-light);}
@@ -624,9 +630,35 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
     </div>
     <div class="fgrp"><label>Notes</label><input type="text" id="loc-new-notes" placeholder="Optional notes"></div>
   </div>
+  <div id="loc-departure-section" style="display:none;margin-top:16px;padding-top:14px;border-top:2px solid var(--orange)">
+    <div style="font-weight:700;color:var(--blue-dark);font-size:13px;margin-bottom:10px">Departure Record <span style="font-size:11px;font-weight:400;color:var(--text-light)">(required by Prop 12 for each animal)</span></div>
+    <div class="fg" style="gap:10px;margin-bottom:10px">
+      <div class="fgrp"><label>Date Left Farm</label><input type="date" id="loc-depart-date"></div>
+      <div class="fgrp"><label>Reason</label>
+        <select id="loc-depart-reason">
+          <option value="">— select —</option>
+          <option value="Live Piglet Sale">Live Piglet Sale</option>
+          <option value="Live Year Old Pig Sale">Live Year Old Pig Sale</option>
+          <option value="Live Montanera Pig Sale">Live Montanera Pig Sale</option>
+          <option value="Sent to Cure">Sent to Cure</option>
+          <option value="Personal Use">Personal Use</option>
+          <option value="Given Away">Given Away</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="fgrp fg-full"><label>Notes</label><input type="text" id="loc-depart-notes" placeholder="Buyer name, price, destination…"></div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="saveDeparture()">Save Departure Record</button>
+    <div id="loc-depart-saved" style="display:none;margin-top:8px;font-size:12px;color:var(--green);font-weight:600"></div>
+  </div>
+  <div id="loc-notes-section" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+    <div style="font-weight:700;color:var(--blue-dark);font-size:13px;margin-bottom:6px">Animal Notes</div>
+    <textarea id="loc-animal-notes" rows="2" style="width:100%;font-size:12px;padding:8px;border:1px solid var(--border);border-radius:6px;resize:vertical" placeholder="General notes (sales info, health history, etc.)"></textarea>
+    <button class="btn btn-muted btn-sm" style="margin-top:6px" onclick="saveAnimalNotes()">Save Notes</button>
+  </div>
   <div class="mfooter">
     <button class="btn btn-muted btn-sm" onclick="closeModal('loc-modal')">Close</button>
-    <button class="btn btn-primary" onclick="addLocEntry()">Add Entry</button>
+    <button class="btn btn-primary" onclick="addLocEntry()">Add Location Entry</button>
   </div>
 </div></div>
 
@@ -656,10 +688,10 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
         <option value="Breeding Females">Breeding Females</option>
         <option value="Growing Pigs">Growing Pigs</option>
         <option value="Curing">Curing</option>
-        <option value="Campo Reserva">Campo Reserva</option>
-        <option value="Young Feeder">Young Feeder</option>
-        <option value="Young Whole Pig">Young Whole Pig</option>
-        <option value="Montanera Finished">Montanera Finished</option>
+        <option value="Live Piglet Sale">Live Piglet Sale</option>
+        <option value="Live Year Old Pig Sale">Live Year Old Pig Sale</option>
+        <option value="Live Montanera Pig Sale">Live Montanera Pig Sale</option>
+        <option value="Personal Use">Personal Use</option>
         <option value="Boar">Boars</option>
       </select>
     </div>
@@ -703,7 +735,7 @@ const PIG_VAXS=[
   {id:'pv4',label:'Fostera Gold PCV MH #2', dose:'1cc IM', anchor:'wean', offsetDays:14,note:'2 wks post-wean (booster)'},
   {id:'pv5',label:'FluSure XP / Erysipelas',dose:'2cc IM', anchor:'wean', offsetDays:28,note:'4 wks post-wean'},
 ];
-const DESIG_OPTS=['undecided','Breeder','Boar','Curing','Campo Reserva','Young Feeder','Young Whole Pig','Montanera Finished'];
+const DESIG_OPTS=['undecided','Breeding Female','Boar','Curing','Live Piglet Sale','Live Year Old Pig Sale','Live Montanera Pig Sale','Personal Use'];
 const NUM_HUTS=5;
 const POST_FARROW_DAYS=14; // default post-farrow stay (14 days after last possible farrow)
 const FARROW_WINDOW_DAYS=3; // farrow window length in days
@@ -942,7 +974,8 @@ function createLitter(){
     piglets:Array.from({length:cnt},(_,i)=>({
       id:uid(),num:i+1,status:'alive',sex:'',color:'',earNotch:'',
       timeBorn:'',birthOz:'',nippleCount:'',
-      castrationDate:'',notes:'',designation:'undecided',weights:{},locationLog:[]
+      castrationDate:'',notes:'',designation:'undecided',weights:{},locationLog:[],
+      departDate:'',departReason:'',departNotes:''
     })),
     pigVax:PIG_VAXS.map(v=>({...v,done:false,actualDate:'',actualNotes:''})),
     sowVax:SOW_VAXS.map(v=>({...v,done:false,actualDate:'',actualNotes:''})),
@@ -1035,8 +1068,9 @@ function buildCard(l){
     <div><div class="ltitle">${sowLbl}${stallTag}${breedStr}${farrowStr}</div>
     <div class="lmeta">${l.boar?'x '+l.boar:''}${dur?' · '+dur:''}${l.parity?' · Parity '+l.parity:''}${wd?' · Weaned '+fmtDate(wd):''}</div></div>
     <div class="badges">
-      <span class="badge bg-blue">${total} born</span><span class="badge bg-gn">${alive} alive</span>
-      ${diedPost?`<span class="badge bg-rd">${diedPost} died</span>`:''}${stillMum?`<span class="badge bg-yw">${stillMum} still/mum</span>`:''}
+      ${l.farrowConfirmed
+        ?`<span class="badge bg-blue">${total} born</span><span class="badge bg-gn">${alive} alive</span>${diedPost?'<span class="badge bg-rd">'+diedPost+' died</span>':''}${stillMum?'<span class="badge bg-yw">'+stillMum+' still/mum</span>':''}`
+        :'<span class="badge" style="background:var(--orange);color:#fff">Farrowing unconfirmed</span>'}
       <button class="btn btn-sm btn-danger" style="margin-left:6px;padding:2px 8px;font-size:11px" onclick="event.stopPropagation();delL('${l.id}')">Delete</button>
     </div>
   </div>
@@ -1044,7 +1078,8 @@ function buildCard(l){
     <div class="tabs" id="tabs-${l.id}"></div>
     <div id="panels-${l.id}"></div>
     <div class="expbar">
-      <span>${l.sow} · ${alive} alive · ${total} born${wd?' · Weaned '+fmtDate(wd):''}</span>
+      <span>${l.sow} · ${l.farrowConfirmed?(alive+' alive · '+total+' born'):'farrowing pending'}${wd?' · Weaned '+fmtDate(wd):''}</span>
+      ${!l.farrowConfirmed?`<button class="btn btn-success btn-sm" onclick="confirmFarrow('${l.id}')">✓ Confirm Farrowed</button>`:`<button class="btn btn-ghost btn-sm" style="color:var(--green);font-size:11px" onclick="unconfirmFarrow('${l.id}')">✓ Farrowed</button>`}
       <button class="btn btn-ghost btn-sm" onclick="openExportModal('${l.id}')">CSV</button>
       <button class="btn btn-ghost btn-sm" onclick="window.print()">Print</button>
       ${wd?`<button class="btn btn-ghost btn-sm" style="color:var(--text-light)" onclick="toggleArchive('${l.id}')">${l.archived?'↑ Unarchive':'Archive ↓'}</button>`:''}
@@ -1468,6 +1503,20 @@ function flushBirthRows(lid){
 function remP(lid,pid){const l=getL(lid);if(!l)return;l.piglets=l.piglets.filter(p=>p.id!==pid);l.piglets.forEach((p,i)=>p.num=i+1);save();renderBirthRows(l);rerenderWeights(lid);}
 function addEv(lid){const l=getL(lid);if(!l)return;l.events.push({id:uid(),date:new Date().toISOString().split('T')[0],name:'',dose:'',notes:''});save();renderEvs(l);}
 function remE(lid,eid){const l=getL(lid);if(!l)return;l.events=l.events.filter(e=>e.id!==eid);save();renderEvs(l);}
+function confirmFarrow(lid){
+  const l=getL(lid);if(!l)return;
+  l.farrowConfirmed=true;
+  save();renderAll();renderHerd();renderTasks();
+  toast(`${l.sow} confirmed farrowed — active litter now showing in Herd & Locations`);
+}
+function unconfirmFarrow(lid){
+  const l=getL(lid);if(!l)return;
+  if(!confirm('Remove farrowing confirmation? The litter will no longer appear as an active litter in Herd & Locations.'))return;
+  l.farrowConfirmed=false;
+  save();renderAll();renderHerd();
+}
+
+
 function toggleArchive(lid){
   const l=getL(lid);if(!l)return;
   l.archived=!l.archived;
@@ -2246,10 +2295,10 @@ function renderSummary(){
     <div class="tally-box t-gn"><div class="tn">Breeders (F)</div><div class="tv">${byD['Breeder']||0}</div></div>
     <div class="tally-box t-gn"><div class="tn">Boars (M)</div><div class="tv">${byD['Boar']||0}</div></div>
     <div class="tally-box"><div class="tn">Curing</div><div class="tv">${byD['Curing']||0}</div></div>
-    <div class="tally-box t-or"><div class="tn">Campo Reserva</div><div class="tv">${byD['Campo Reserva']||0}</div></div>
-    <div class="tally-box t-or"><div class="tn">Young Feeder</div><div class="tv">${byD['Young Feeder']||0}</div></div>
-    <div class="tally-box t-or"><div class="tn">Young Whole Pig</div><div class="tv">${byD['Young Whole Pig']||0}</div></div>
-    <div class="tally-box t-or"><div class="tn">Montanera Finished</div><div class="tv">${byD['Montanera Finished']||0}</div></div>
+    <div class="tally-box t-or"><div class="tn">Live Piglet Sale</div><div class="tv">${byD['Live Piglet Sale']||0}</div></div>
+    <div class="tally-box t-or"><div class="tn">Live Year Old Sale</div><div class="tv">${byD['Live Year Old Pig Sale']||0}</div></div>
+    <div class="tally-box t-or"><div class="tn">Live Montanera Sale</div><div class="tv">${byD['Live Montanera Pig Sale']||0}</div></div>
+    <div class="tally-box t-or"><div class="tn">Personal Use</div><div class="tv">${byD['Personal Use']||0}</div></div>
     <div class="tally-box"><div class="tn">Undecided</div><div class="tv">${byD['undecided']||0}${byD['Feeder']?` <span style="font-size:11px;color:var(--orange)" title="Legacy 'Feeder' designation — please update">+${byD['Feeder']} legacy</span>`:''}</div></div>
   </div>`;
   if(sLits.length)html+=`<div class="stitle">Jun–Aug ${cur} Litters</div>${litSummTable(sLits)}`;
@@ -2431,7 +2480,13 @@ function buildHerdEntities(){
   const result={breedingFemales:[],activeLitters:[],growingPigs:[],boars:[]};
 
   // Breeding Females — from Breeding Tracker
+  // If a breeder has an active confirmed litter (not yet weaned), she appears in
+  // Active Litters instead, so suppress her from Breeding Females to avoid duplication
+  const activeConfirmedLitterSows=new Set(
+    litters.filter(l=>l.farrowConfirmed&&!l.archived).map(l=>l.sow)
+  );
   breeders.forEach(br=>{
+    if(activeConfirmedLitterSows.has(br.sow))return; // she's in Active Litters
     if(!br.locationLog)br.locationLog=[];
     result.breedingFemales.push({
       id:'bf-'+br.id, name:br.sow, tag:br.tag||'',
@@ -2448,9 +2503,8 @@ function buildHerdEntities(){
     const wd=getWeanDate(l);
     const isWeaned=wd&&wd<=today;
     if(isWeaned)return;
-    // Don't show in Active Litters until at least one piglet has been entered
-    const hasPiglets=l.piglets&&l.piglets.length>0;
-    if(!hasPiglets)return;
+    // Only show as Active Litter once farrowing is confirmed
+    if(!l.farrowConfirmed)return;
     result.activeLitters.push({
       id:'lit-'+l.id, name:`${l.sow} + Litter`, tag:'',
       sub:`Farrowed ${l.date?fmtDate(l.date):'?'}${wd?' · Wean '+fmtDate(wd):''}${l.boar?' · Sire: '+l.boar:''}`,
@@ -2472,10 +2526,10 @@ function buildHerdEntities(){
       const sex=p.sex||'';
       // Determine section by designation
       let section='growingPigs';
-      if(desig==='Boar'||(desig==='Breeder'&&(sex==='M'||sex==='Barrow')))section='boars';
-      else if(desig==='Breeder'&&sex==='F')section='breedingFemales';
+      if(desig==='Boar'||(desig==='Breeding Female'&&(sex==='M'||sex==='Barrow')))section='boars';
+      else if(desig==='Breeding Female'&&sex==='F')section='breedingFemales';
       // Only show as individual if weaned OR promoted to Breeder/Boar
-      const isPromoted=desig==='Breeder'||desig==='Boar';
+      const isPromoted=desig==='Breeding Female'||desig==='Boar';
       if(!weaned&&!isPromoted)return;
       const label=p.earNotch||`#${p.num}`;
       result[section].push({
@@ -2530,9 +2584,13 @@ function renderHerdSection(containerId, entities, title, hdrCls, subtitle){
     const locHtml=cl
       ?`<div class="loc-current">${cl.location}</div><div class="loc-since">Since ${fmtDate(cl.date)}${cl.notes?' · '+cl.notes:''}</div>`
       :`<div class="loc-none">No location recorded</div>`;
-    return`<div class="animal-row${e.isDeceased?' deceased':''}">
-      <div>${nameHtml}</div>
-      <div>${locHtml}</div>
+    const p=e.entityType==='piglet'?e.entityRef:null;
+    const departHtml=p&&p.departDate
+      ?`<div style="font-size:10px;background:#fff3cd;border:1px solid #ffc107;border-radius:3px;padding:2px 6px;margin-top:3px;color:#856404">Left farm ${fmtDate(p.departDate)}${p.departReason?' · '+p.departReason:''}</div>`:'';
+    const pigNotesHtml=p&&p.notes?`<div style="font-size:10px;color:var(--text-light);margin-top:2px;font-style:italic">${p.notes}</div>`:'';
+    return`<div class="animal-row${e.isDeceased?' deceased':''}${p&&p.departDate?' departed':''}">
+      <div>${nameHtml}${pigNotesHtml}</div>
+      <div>${locHtml}${departHtml}</div>
       <div style="font-size:11px;color:var(--text-mid)">${isLitter?(e.pigletCount?e.pigletCount+' piglets':''):(e.designation&&e.designation!=='undecided'?e.designation:'')}</div>
       <div><button class="loc-log-btn" onclick="openLocModal('${e.id}','${e.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">Location Log</button></div>
     </div>`;
@@ -2560,10 +2618,51 @@ function openLocModal(compositeId, name){
   document.getElementById('loc-new-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('loc-new-place').value='';
   document.getElementById('loc-new-notes').value='';
+
+  // Show departure and notes sections for individual pigs only
+  const isPig=ent.entityType==='piglet';
+  const depSect=document.getElementById('loc-departure-section');
+  const notesSect=document.getElementById('loc-notes-section');
+  if(depSect)depSect.style.display=isPig?'block':'none';
+  if(notesSect)notesSect.style.display=isPig?'block':'none';
+  if(isPig){
+    const p=ent.entityRef;
+    const dd=document.getElementById('loc-depart-date');if(dd)dd.value=p.departDate||'';
+    const dr=document.getElementById('loc-depart-reason');if(dr)dr.value=p.departReason||'';
+    const dn=document.getElementById('loc-depart-notes');if(dn)dn.value=p.departNotes||'';
+    const ds=document.getElementById('loc-depart-saved');
+    if(ds)ds.style.display=p.departDate?'block':'none';
+    if(ds&&p.departDate)ds.textContent=`✓ Departed ${fmtDate(p.departDate)} — ${p.departReason||'reason not set'}`;
+    const na=document.getElementById('loc-animal-notes');if(na)na.value=p.notes||'';
+  }
   refreshLocDatalist();
   renderLocLog();
   openModal('loc-modal');
 }
+
+function saveDeparture(){
+  if(!_locEnt||_locEnt.type!=='piglet')return;
+  const p=_locEnt.ref;
+  p.departDate=document.getElementById('loc-depart-date').value;
+  p.departReason=document.getElementById('loc-depart-reason').value;
+  p.departNotes=document.getElementById('loc-depart-notes').value.trim();
+  save();
+  const ds=document.getElementById('loc-depart-saved');
+  if(ds){
+    ds.style.display=p.departDate?'block':'none';
+    ds.textContent=p.departDate?`✓ Departed ${fmtDate(p.departDate)} — ${p.departReason||'reason not set'}`:'';
+  }
+  toast('Departure record saved');
+}
+
+function saveAnimalNotes(){
+  if(!_locEnt||_locEnt.type!=='piglet')return;
+  const p=_locEnt.ref;
+  p.notes=document.getElementById('loc-animal-notes').value.trim();
+  save();
+  toast('Notes saved');
+}
+
 
 function renderLocLog(){
   const con=document.getElementById('loc-log-list');if(!con||!_locEnt)return;
@@ -2953,22 +3052,23 @@ function renderTasks(){
   let tasks=buildTaskList();
 
   // Apply filter
-  if(filter==='overdue')tasks=tasks.filter(t=>t.due<today&&!_taskState[t.id]?.done);
+  if(filter==='overdue')tasks=tasks.filter(t=>t.due<today&&!_taskState[t.id]?.done&&!_taskState[t.id]?.skipped);
   else if(filter==='week'){const w=addDays(today,7);tasks=tasks.filter(t=>t.due>=today&&t.due<=w);}
   else if(filter==='month'){const m=addDays(today,30);tasks=tasks.filter(t=>t.due>=today&&t.due<=m);}
   else if(filter!=='all')tasks=tasks.filter(t=>t.filter===filter);
 
   // Summary bar
   const total=tasks.length;
-  const overdue=tasks.filter(t=>t.due<today&&!_taskState[t.id]?.done).length;
+  const overdue=tasks.filter(t=>t.due<today&&!_taskState[t.id]?.done&&!_taskState[t.id]?.skipped).length;
   const dueThisWeek=tasks.filter(t=>{const d=dateDiff(today,t.due);return d!==null&&d>=0&&d<=7;}).length;
   const done=tasks.filter(t=>_taskState[t.id]?.done).length;
+  const skipped=tasks.filter(t=>_taskState[t.id]?.skipped).length;
   document.getElementById('task-summary-bar').innerHTML=`
     <div style="display:flex;gap:16px;flex-wrap:wrap;padding:10px 14px;background:var(--paper);border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px">
       <span><strong style="font-size:18px;color:var(--blue-dark);font-family:'Playfair Display',serif">${total}</strong> tasks</span>
       ${overdue?`<span style="color:var(--red)"><strong>${overdue}</strong> overdue</span>`:''}
       <span style="color:var(--yellow)"><strong>${dueThisWeek}</strong> due this week</span>
-      <span style="color:var(--green)"><strong>${done}</strong> marked done</span>
+      <span style="color:var(--green)"><strong>${done}</strong> done</span>${skipped?`<span style="color:var(--text-mid)"><strong>${skipped}</strong> skipped</span>`:''}
       <button class="btn btn-sm btn-muted" style="margin-left:auto" onclick="clearCompletedTasks()">Clear Completed</button>
     </div>`;
 
@@ -2979,29 +3079,44 @@ function renderTasks(){
 
   // Group by: Overdue / Today / This Week / This Month / Future
   const groups=[
-    {key:'overdue', label:'Overdue', tasks:tasks.filter(t=>t.due<today)},
+    {key:'overdue', label:'Overdue', tasks:tasks.filter(t=>t.due<today&&!_taskState[t.id]?.skipped)},
     {key:'today',   label:'Today',   tasks:tasks.filter(t=>t.due===today)},
     {key:'week',    label:'Next 7 Days', tasks:tasks.filter(t=>{const d=dateDiff(today,t.due);return d!==null&&d>0&&d<=7;})},
     {key:'month',   label:'Next 30 Days',tasks:tasks.filter(t=>{const d=dateDiff(today,t.due);return d!==null&&d>7&&d<=30;})},
     {key:'future',  label:'Future (30+ days)',tasks:tasks.filter(t=>{const d=dateDiff(today,t.due);return d!==null&&d>30;})},
   ].filter(g=>g.tasks.length);
 
-  const colHdr=`<div class="task-col-hdr"><span></span><span>Type</span><span>Task</span><span>Animal</span><span>Due Date</span><span>Completed</span></div>`;
+  const colHdr=`<div class="task-col-hdr"><span></span><span>Type</span><span>Task</span><span>Animal</span><span>Due Date</span><span>Outcome &amp; Notes</span></div>`;
   document.getElementById('task-list-body').innerHTML=groups.map(g=>{
     const rows=g.tasks.map(t=>{
       const ts=_taskState[t.id]||{};
       const st=taskStatus(t.due);
       const tt=TASK_TYPES[t.type]||{label:t.type,cls:'bg-lt'};
-      return`<div class="task-row ${ts.done?'completed':st==='overdue'?'overdue':st==='due-soon'?'due-soon':''}" id="taskrow-${t.id}">
-        <input type="checkbox" style="width:14px;height:14px" ${ts.done?'checked':''} onchange="toggleTask('${t.id}',this.checked)">
+      const rowCls=ts.done?'completed':ts.skipped?'skipped':st==='overdue'?'overdue':st==='due-soon'?'due-soon':'';
+      return`<div class="task-row ${rowCls}" id="taskrow-${t.id}">
+        <input type="checkbox" style="width:14px;height:14px" ${ts.done?'checked':''} onchange="toggleTask('${t.id}',this.checked)" title="Mark done">
         <span><span class="task-type-badge ${tt.cls}">${tt.label}</span></span>
         <span>
           <div class="task-name">${t.name}</div>
-          ${t.note?`<div style="font-size:10px;color:var(--text-light)">${t.note}</div>`:''}
+          ${t.note?`<div class="task-note">${t.note}</div>`:''}
         </span>
         <span class="task-animal">${t.animal}</span>
-        <span class="task-due ${st==='overdue'?'overdue':st==='due-soon'?'soon':'ok'}">${fmtDate(t.due)}${st==='overdue'?` <span style="font-size:10px">(${Math.abs(dateDiff(today,t.due))}d ago)</span>`:st==='due-soon'?` <span style="font-size:10px">(${dateDiff(today,t.due)}d)</span>`:''}</span>
-        <span><input type="date" value="${ts.completedDate||''}" style="font-size:11px;padding:3px 5px;width:120px" placeholder="Date done" onchange="setTaskDate('${t.id}',this.value)"></span>
+        <span class="task-due ${ts.skipped?'skipped-due':st==='overdue'?'overdue':st==='due-soon'?'soon':'ok'}">${fmtDate(t.due)}${!ts.skipped&&st==='overdue'?` <span style="font-size:10px">(${Math.abs(dateDiff(today,t.due))}d ago)</span>`:!ts.skipped&&st==='due-soon'?` <span style="font-size:10px">(${dateDiff(today,t.due)}d)</span>`:''}</span>
+        <span class="task-outcome-col">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+            <input type="date" value="${ts.completedDate||''}" style="font-size:11px;padding:2px 4px;width:112px" placeholder="Date done" onchange="setTaskDate('${t.id}',this.value)" title="Date completed">
+          </div>
+          <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-mid);cursor:pointer;white-space:nowrap">
+            <input type="checkbox" ${ts.skipped?'checked':''} style="width:12px;height:12px" onchange="skipTask('${t.id}',this.checked)">
+            Not done / N/A
+          </label>
+          <div style="margin-top:4px">
+            <input type="text" value="${ts.taskNotes||''}" placeholder="Intervention notes…"
+              style="width:100%;font-size:11px;padding:2px 5px;border:1px solid var(--border);border-radius:4px;background:${ts.taskNotes?'var(--blue-pale)':'transparent'}"
+              onchange="setTaskNotes('${t.id}',this.value)"
+              title="Notes about this task or intervention">
+          </div>
+        </span>
       </div>`;
     }).join('');
     const doneCount=g.tasks.filter(t=>_taskState[t.id]?.done).length;
@@ -3018,12 +3133,21 @@ function renderTasks(){
 function toggleTask(id,checked){
   if(!_taskState[id])_taskState[id]={};
   _taskState[id].done=checked;
-  if(checked&&!_taskState[id].completedDate)
-    _taskState[id].completedDate=new Date().toISOString().split('T')[0];
-  if(!checked)_taskState[id].completedDate='';
-  saveTaskState();
-  // Full re-render to reliably update all styling and counts
-  renderTasks();
+  if(checked){
+    if(!_taskState[id].completedDate)
+      _taskState[id].completedDate=new Date().toISOString().split('T')[0];
+    _taskState[id].skipped=false; // done overrides skipped
+  } else {
+    _taskState[id].completedDate='';
+  }
+  saveTaskState();renderTasks();
+}
+
+function skipTask(id,checked){
+  if(!_taskState[id])_taskState[id]={};
+  _taskState[id].skipped=checked;
+  if(checked)_taskState[id].done=false; // skipped overrides done
+  saveTaskState();renderTasks();
 }
 
 function setTaskDate(id,val){
@@ -3032,20 +3156,26 @@ function setTaskDate(id,val){
   saveTaskState();
 }
 
+function setTaskNotes(id,val){
+  if(!_taskState[id])_taskState[id]={};
+  _taskState[id].taskNotes=val.trim();
+  saveTaskState();
+}
+
 function clearCompletedTasks(){
-  Object.keys(_taskState).forEach(k=>{if(_taskState[k].done)delete _taskState[k];});
-  saveTaskState();renderTasks();toast('Completed tasks cleared');
+  Object.keys(_taskState).forEach(k=>{if(_taskState[k].done||_taskState[k].skipped)delete _taskState[k];});
+  saveTaskState();renderTasks();toast('Completed and skipped tasks cleared');
 }
 
 function exportTasksCSV(){
   const tasks=buildTaskList();
   const today=new Date().toISOString().split('T')[0];
   const rows=[csvR(['Bellota Farms — Task List',fmtDate(today)]),''];
-  rows.push(csvR(['Status','Type','Task','Animal / Litter','Due Date','Note','Done','Completed Date']));
+  rows.push(csvR(['Status','Type','Task','Animal / Litter','Due Date','Note','Done','Completed Date','Skipped / N/A','Intervention Notes']));
   tasks.forEach(t=>{
     const ts=_taskState[t.id]||{};
     const st=t.due<today?'Overdue':t.due===today?'Today':'Upcoming';
-    rows.push(csvR([ts.done?'Done':st,TASK_TYPES[t.type]?.label||t.type,t.name,t.animal,t.due,t.note||'',ts.done?'Yes':'No',ts.completedDate||'']));
+    rows.push(csvR([ts.done?'Done':ts.skipped?'Skipped/N/A':st,TASK_TYPES[t.type]?.label||t.type,t.name,t.animal,t.due,t.note||'',ts.done?'Yes':'No',ts.completedDate||'',ts.skipped?'Yes':'No',ts.taskNotes||'']));
   });
   const b=new Blob([rows.join('\n')],{type:'text/csv'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);
@@ -3774,6 +3904,8 @@ if(breeders.some(b=>typeof b.hutAssignment==='number'===false&&b.hutAssignment!=
 
 // Auto-archive any litter that has a wean date but isn't marked archived yet
 litters.forEach(l=>{if(l.weanDate&&!l.archived)l.archived=true;});
+// Auto-confirm farrowing for existing litters that have piglets entered
+litters.forEach(l=>{if(l.piglets&&l.piglets.length>0&&l.farrowConfirmed===undefined)l.farrowConfirmed=true;});
 
 scrubIntegrity();
 renderAll();
