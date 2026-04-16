@@ -158,7 +158,7 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
 .gantt-day.sunday{background:rgba(234,244,251,.5);}
 .gantt-day.today{background:rgba(245,160,35,.15);color:var(--orange);font-weight:700;}
 .gantt-hut-row{display:flex;align-items:center;border-bottom:1px solid var(--border);position:relative;min-height:44px;}
-.gantt-hut-label{width:80px;flex-shrink:0;padding:0 10px;font-size:11px;font-weight:700;color:var(--blue-dark);font-family:'DM Mono',monospace;border-right:2px solid var(--border);background:var(--blue-pale);height:100%;display:flex;align-items:center;}
+.gantt-hut-label{width:112px;flex-shrink:0;padding:0 8px;font-size:10px;font-weight:700;color:var(--blue-dark);font-family:'DM Mono',monospace;border-right:2px solid var(--border);background:var(--blue-pale);height:100%;display:flex;align-items:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .gantt-hut-track{flex:1;position:relative;height:44px;background:repeating-linear-gradient(90deg,transparent,transparent calc(var(--dpx)*7 - 1px),rgba(192,216,234,.2) calc(var(--dpx)*7 - 1px),rgba(192,216,234,.2) calc(var(--dpx)*7));}
 .gantt-bar{position:absolute;top:6px;height:32px;border-radius:5px;display:flex;align-items:center;padding:0 6px;font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;transition:opacity .15s;box-shadow:0 1px 4px rgba(0,0,0,.15);}
 .gantt-bar:hover{opacity:.85;z-index:10;}
@@ -225,7 +225,7 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
 .est-tbl .ro{font-size:11px;color:var(--text-mid);font-family:'DM Mono',monospace;white-space:nowrap;}
 .sc-sow{font-size:10px;color:var(--text-mid);margin-top:3px;border-top:1px solid var(--border);padding-top:3px;}
 .sc-note{font-size:10px;color:var(--blue-dark);font-style:italic;margin-top:1px;}
-.fg{grid-template-columns:1fr;}th,td{padding:4px 3px;}.app-header h1{font-size:16px;}.tally-grid{grid-template-columns:repeat(2,1fr);}.dates-grid{grid-template-columns:1fr 1fr;}.gantt-hut-label{width:56px;font-size:10px;}}
+.fg{grid-template-columns:1fr;}th,td{padding:4px 3px;}.app-header h1{font-size:16px;}.tally-grid{grid-template-columns:repeat(2,1fr);}.dates-grid{grid-template-columns:1fr 1fr;}.gantt-hut-label{width:80px;font-size:9px;}}
 @media print{.header-acts,.btn,.tabs,.expbar,.top-nav,.modal-ov{display:none!important;}.lbody{display:block!important;}.tab-panel{display:block!important;page-break-inside:avoid;}}
 
 /* ── HERD & LOCATIONS ─────────────────────────────────────────────────────── */
@@ -249,7 +249,7 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
 .loc-log-btn{font-size:11px;padding:3px 10px;background:var(--blue-pale);border:1px solid var(--blue-light);color:var(--blue-dark);border-radius:4px;cursor:pointer;white-space:nowrap;}
 .loc-log-btn:hover{background:var(--blue-light);}
 /* Location log modal list */
-.loc-entry{display:grid;grid-template-columns:110px 1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.loc-entry{display:grid;grid-template-columns:110px 1fr 1fr 32px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;}
 .loc-entry:last-child{border-bottom:none;}
 .loc-log-list{max-height:320px;overflow-y:auto;margin-bottom:12px;}
 /* Census bar */
@@ -992,17 +992,30 @@ function renderAll(){
   const tabs={};document.querySelectorAll('.tab-btn.active').forEach(b=>{const lid=b.closest('.lbody')?.dataset.id;if(lid)tabs[lid]=b.dataset.tab;});
   con.innerHTML='';
   // Sort oldest farrow date first; litters without a date go to the end
-  const sorted=[...litters].sort((a,b)=>{
-    if(!a.date&&!b.date)return 0;
-    if(!a.date)return 1;
-    if(!b.date)return -1;
-    return a.date.localeCompare(b.date);
-  });
-  sorted.forEach(l=>{
+  const sortFn=(a,b)=>{if(!a.date&&!b.date)return 0;if(!a.date)return 1;if(!b.date)return -1;return a.date.localeCompare(b.date);};
+  const active=[...litters].filter(l=>!l.archived).sort(sortFn);
+  const archived=[...litters].filter(l=>l.archived).sort(sortFn);
+  active.forEach(l=>{
     const c=buildCard(l);
     if(opens.has(l.id)){c.querySelector('.lbody').classList.add('open');const tb=tabs[l.id]||'birth';const btn=c.querySelector(`.tab-btn[data-tab="${tb}"]`);if(btn)activateTab(btn,l.id,tb);}
     con.appendChild(c);
   });
+  if(archived.length){
+    const archSect=document.createElement('div');
+    archSect.style.cssText='margin-top:24px;';
+    archSect.innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':' none'">
+      <div style="font-family:'Playfair Display',serif;font-size:15px;font-weight:600;color:var(--text-mid)">Archived Litters (${archived.length})</div>
+      <span style="font-size:11px;color:var(--text-light)">click to expand</span>
+    </div>
+    <div id="archived-litters-list" style="display:none"></div>`;
+    con.appendChild(archSect);
+    const archList=archSect.querySelector('#archived-litters-list');
+    archived.forEach(l=>{
+      const c=buildCard(l);
+      if(opens.has(l.id)){c.querySelector('.lbody').classList.add('open');const tb=tabs[l.id]||'birth';const btn=c.querySelector(`.tab-btn[data-tab="${tb}"]`);if(btn)activateTab(btn,l.id,tb);}
+      archList.appendChild(c);
+    });
+  }
 }
 
 function buildCard(l){
@@ -1034,6 +1047,7 @@ function buildCard(l){
       <span>${l.sow} · ${alive} alive · ${total} born${wd?' · Weaned '+fmtDate(wd):''}</span>
       <button class="btn btn-ghost btn-sm" onclick="openExportModal('${l.id}')">CSV</button>
       <button class="btn btn-ghost btn-sm" onclick="window.print()">Print</button>
+      ${wd?`<button class="btn btn-ghost btn-sm" style="color:var(--text-light)" onclick="toggleArchive('${l.id}')">${l.archived?'↑ Unarchive':'Archive ↓'}</button>`:''}
     </div>
   </div>`;
   setTimeout(()=>rebuildTabs(l),0);
@@ -1076,7 +1090,7 @@ function rebuildTabs(l){
         ${cp.isWean
           ?`<div class="wt-day-input" style="flex:1"><span style="font-weight:700;color:var(--blue-dark)">Weaning Checkpoint</span>
               <span style="margin-left:16px">Wean Date (source of truth):</span>
-              <input type="date" id="wcp-wdate-${l.id}" value="${wd}" style="width:140px;padding:4px 8px;font-size:13px;font-weight:600;border-color:var(--blue)" onchange="setWeanDate('${l.id}',this.value)">
+              <input type="date" id="wcp-wdate-${l.id}" value="${wd}" style="width:140px;padding:4px 8px;font-size:13px;font-weight:600;border-color:var(--blue)" onblur="setWeanDate('${l.id}',this.value)" onchange="upL('${l.id}','weanDate',this.value)">
               <span class="wean-date-display" id="wcp-wfmt-${l.id}">${wd?fmtDate(wd):''}</span></div>`
           :`<div class="wt-day-input"><span>Label:</span><input type="text" value="${cp.label}" style="width:90px;padding:4px 7px;font-size:12px" onchange="updateCp('${l.id}','${cp.id}','label',this.value)"></div>
             <div class="wt-day-input"><span>Days post-birth:</span><input type="number" value="${cp.days}" min="1" max="365" style="width:60px;padding:4px 7px" onchange="updateCp('${l.id}','${cp.id}','days',parseInt(this.value)||1);rerenderWeights('${l.id}')"></div>
@@ -1100,13 +1114,13 @@ function rebuildTabs(l){
     </div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:10px 12px;background:${l.pigVaxComplete?'var(--green-bg)':'var(--gray-bg)'};border-radius:8px;border:1px solid ${l.pigVaxComplete?'var(--green-bd)':'var(--border)'}">
       <input type="checkbox" ${l.pigVaxComplete?'checked':''} id="pvc-${l.id}" onchange="setVaxComplete('${l.id}','pig',this.checked)">
-      <label for="pvc-${l.id}" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;cursor:pointer;color:${l.pigVaxComplete?'var(--green)':'var(--text-mid)'}">Piglet Vaccines Complete${l.pigVaxComplete&&l.pigVaxCompleteDate?' — '+fmtDate(l.pigVaxCompleteDate):''}</label>
+      <label for="pvc-${l.id}" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;cursor:pointer;color:${l.pigVaxComplete?'var(--green)':'var(--text-mid)'}">Piglet Vaccines Complete</label>
     </div>
     <div class="stitle" style="font-size:13px">Piglet Vaccines</div>
     <div class="tw"><table class="vax-hdr"><thead><tr><th>Done</th><th>Vaccine</th><th>Dose</th><th>Expected Date</th><th>Actual Date</th><th>Notes</th></tr></thead><tbody id="pvb-${l.id}"></tbody></table></div>
     <div style="display:flex;align-items:center;gap:12px;margin-top:18px;margin-bottom:12px;padding:10px 12px;background:${l.sowVaxComplete?'var(--green-bg)':'var(--gray-bg)'};border-radius:8px;border:1px solid ${l.sowVaxComplete?'var(--green-bd)':'var(--border)'}">
       <input type="checkbox" ${l.sowVaxComplete?'checked':''} id="svc-${l.id}" onchange="setVaxComplete('${l.id}','sow',this.checked)">
-      <label for="svc-${l.id}" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;cursor:pointer;color:${l.sowVaxComplete?'var(--green)':'var(--text-mid)'}">Sow Vaccines Complete${l.sowVaxComplete&&l.sowVaxCompleteDate?' — '+fmtDate(l.sowVaxCompleteDate):''}</label>
+      <label for="svc-${l.id}" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;cursor:pointer;color:${l.sowVaxComplete?'var(--green)':'var(--text-mid)'}">Sow Vaccines Complete</label>
     </div>
     <div class="stitle" style="font-size:13px">Sow Vaccines &amp; Supplements</div>
     <div style="font-size:11px;color:var(--text-light);margin-bottom:8px">★ = First parity gilts only</div>
@@ -1393,8 +1407,8 @@ function autoExpFarrowLitter(lid){
 }
 function setVaxComplete(lid,type,val){
   const l=getL(lid);if(!l)return;
-  if(type==='pig'){l.pigVaxComplete=val;l.pigVaxCompleteDate=val?new Date().toISOString().split('T')[0]:'';}
-  else{l.sowVaxComplete=val;l.sowVaxCompleteDate=val?new Date().toISOString().split('T')[0]:'';}
+  if(type==='pig'){l.pigVaxComplete=val;l.pigVaxCompleteDate='';}
+  else{l.sowVaxComplete=val;l.sowVaxCompleteDate='';}
   save();rebuildTabs(l);
 }
 function updateCp(lid,cpid,field,val){
@@ -1450,6 +1464,14 @@ function flushBirthRows(lid){
 function remP(lid,pid){const l=getL(lid);if(!l)return;l.piglets=l.piglets.filter(p=>p.id!==pid);l.piglets.forEach((p,i)=>p.num=i+1);save();renderBirthRows(l);rerenderWeights(lid);}
 function addEv(lid){const l=getL(lid);if(!l)return;l.events.push({id:uid(),date:new Date().toISOString().split('T')[0],name:'',dose:'',notes:''});save();renderEvs(l);}
 function remE(lid,eid){const l=getL(lid);if(!l)return;l.events=l.events.filter(e=>e.id!==eid);save();renderEvs(l);}
+function toggleArchive(lid){
+  const l=getL(lid);if(!l)return;
+  l.archived=!l.archived;
+  save();renderAll();
+  toast(l.archived?`${l.sow}'s litter archived — find it at the bottom of Litter Records`:`${l.sow}'s litter restored to active records`);
+}
+
+
 function delL(lid){
   if(!confirm('Permanently delete this litter and all its piglet records?'))return;
   // Unlink from any breeder that references this litter
@@ -2117,9 +2139,9 @@ function renderGantt(){
     </div>
     <div class="gantt-legend">${legendHTML}<span class="li" style="margin-left:auto"><span class="ld" style="background:var(--red-bg);border:1px solid var(--red-bd)"></span>Conflict</span></div>
     <div class="gantt-scroll">
-      <div class="gantt-grid" style="width:${totalDays*DAY_PX+80}px">
-        <div style="display:flex"><div style="width:80px;flex-shrink:0"></div><div class="gantt-months" style="flex:1">${monthsHTML}</div></div>
-        <div style="display:flex"><div style="width:80px;flex-shrink:0"></div><div class="gantt-days-row" style="flex:1">${daysHTML}</div></div>
+      <div class="gantt-grid" style="width:${totalDays*DAY_PX+112}px">
+        <div style="display:flex"><div style="width:112px;flex-shrink:0"></div><div class="gantt-months" style="flex:1">${monthsHTML}</div></div>
+        <div style="display:flex"><div style="width:112px;flex-shrink:0"></div><div class="gantt-days-row" style="flex:1">${daysHTML}</div></div>
         ${hutRows}
         ${unassignedItems.length?`<div class="gantt-hut-row" style="--dpx:${DAY_PX}px">
           <div class="gantt-hut-label" style="color:var(--red);font-size:10px">UNASSIGNED</div>
@@ -2513,7 +2535,7 @@ function renderHerdSection(containerId, entities, title, hdrCls, subtitle){
   }).join('');
   con.innerHTML=`<div class="hl-section">
     <div class="hl-section-hdr ${hdrCls||''}">
-      <h3>${title} <span class="hl-count">${entities.length}</span></h3>
+      <h3>${title} <span class="hl-count">${entities.filter(e=>!e.isDeceased).length}</span>${entities.some(e=>e.isDeceased)?"<span style='font-size:10px;font-weight:400;opacity:.7;margin-left:4px'>"+entities.filter(e=>e.isDeceased).length+" deceased</span>":""}</h3>
       ${subtitle?`<span style="font-size:11px;opacity:.7">${subtitle}</span>`:''}
     </div>${rows}</div>`;
 }
