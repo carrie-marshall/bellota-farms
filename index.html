@@ -263,8 +263,8 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
 .cohort-check-item:hover{background:var(--blue-pale);}
 
 /* ── TASK LIST ────────────────────────────────────────────────────────────── */
-.task-col-hdr{display:grid;grid-template-columns:28px 100px 1fr 180px 110px 110px;gap:10px;padding:8px 14px;background:var(--blue-dark);color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-radius:var(--radius) var(--radius) 0 0;}
-.task-row{display:grid;grid-template-columns:28px 100px 1fr 180px 110px 110px;gap:10px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border);font-size:12px;background:var(--paper);}
+.task-col-hdr{display:grid;grid-template-columns:28px 90px 1fr 160px 200px;gap:10px;padding:8px 14px;background:var(--blue-dark);color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-radius:var(--radius) var(--radius) 0 0;}
+.task-row{display:grid;grid-template-columns:28px 100px 1fr 180px 110px 110px;gap:10px;align-items:start;padding:9px 14px;border-bottom:1px solid var(--border);font-size:12px;background:var(--paper);}
 .task-row:nth-child(even){background:var(--gray-bg);}
 .task-row.completed{opacity:.45;text-decoration:line-through;}
 .task-row.overdue{background:#fff5f5;}
@@ -287,7 +287,7 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
 @media(max-width:700px){
   .animal-row{grid-template-columns:1fr auto;}
   .task-col-hdr{display:none;}
-  .task-row{grid-template-columns:1fr;gap:3px;}
+  .task-row{grid-template-columns:28px 1fr;gap:8px;}
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -3086,7 +3086,7 @@ function renderTasks(){
     {key:'future',  label:'Future (30+ days)',tasks:tasks.filter(t=>{const d=dateDiff(today,t.due);return d!==null&&d>30;})},
   ].filter(g=>g.tasks.length);
 
-  const colHdr=`<div class="task-col-hdr"><span></span><span>Type</span><span>Task</span><span>Animal</span><span>Due Date</span><span>Outcome &amp; Notes</span></div>`;
+  const colHdr=`<div class="task-col-hdr"><span></span><span>Type</span><span>Task</span><span>Animal &amp; Due Date</span><span>Outcome &amp; Notes</span></div>`;
   document.getElementById('task-list-body').innerHTML=groups.map(g=>{
     const rows=g.tasks.map(t=>{
       const ts=_taskState[t.id]||{};
@@ -3100,11 +3100,13 @@ function renderTasks(){
           <div class="task-name">${t.name}</div>
           ${t.note?`<div class="task-note">${t.note}</div>`:''}
         </span>
-        <span class="task-animal">${t.animal}</span>
-        <span class="task-due ${ts.skipped?'skipped-due':st==='overdue'?'overdue':st==='due-soon'?'soon':'ok'}">${fmtDate(t.due)}${!ts.skipped&&st==='overdue'?` <span style="font-size:10px">(${Math.abs(dateDiff(today,t.due))}d ago)</span>`:!ts.skipped&&st==='due-soon'?` <span style="font-size:10px">(${dateDiff(today,t.due)}d)</span>`:''}</span>
+        <span>
+          <div class="task-animal">${t.animal}</div>
+          <div class="task-due ${ts.skipped?'skipped-due':st==='overdue'?'overdue':st==='due-soon'?'soon':'ok'}" style="margin-top:3px">${fmtDate(t.due)}${!ts.skipped&&st==='overdue'?` <span style="font-size:10px">(${Math.abs(dateDiff(today,t.due))}d ago)</span>`:!ts.skipped&&st==='due-soon'?` <span style="font-size:10px">(${dateDiff(today,t.due)}d)</span>`:''}</div>
+        </span>
         <span class="task-outcome-col">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-            <input type="date" value="${ts.completedDate||''}" style="font-size:11px;padding:2px 4px;width:112px" placeholder="Date done" onchange="setTaskDate('${t.id}',this.value)" title="Date completed">
+          <div style="margin-bottom:4px">
+            <input type="date" value="${ts.completedDate||''}" style="font-size:11px;padding:2px 4px;width:100%" placeholder="Date done" onchange="setTaskDate('${t.id}',this.value)" title="Date completed">
           </div>
           <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-mid);cursor:pointer;white-space:nowrap">
             <input type="checkbox" ${ts.skipped?'checked':''} style="width:12px;height:12px" onchange="skipTask('${t.id}',this.checked)">
