@@ -961,6 +961,7 @@ function createLitter(){
     id:uid(),sow,
     date:document.getElementById('nl-date').value,
     farrowIsActual:(document.getElementById('nl-farrow-type').value==='actual'),
+    farrowConfirmed:(document.getElementById('nl-farrow-type').value==='actual'),
     sowTag:document.getElementById('nl-tag').value.trim(),
     boar:document.getElementById('nl-boar').value.trim(),
     parity:document.getElementById('nl-parity').value,
@@ -1201,7 +1202,7 @@ function rebuildTabs(l){
           <input type="date" id="farrow-date-${l.id}" value="${l.date||''}" style="flex:1;min-width:140px"
             onchange="upL('${l.id}','date',this.value);updateLitterHeader('${l.id}')">
           <select id="farrow-type-${l.id}" style="width:auto;padding:5px 8px;font-size:12px"
-            onchange="upL('${l.id}','farrowIsActual',this.value==='actual')">
+            onchange="upL('${l.id}','farrowIsActual',this.value==='actual');if(this.value==='actual'){const lx=getL('${l.id}');if(lx&&!lx.farrowConfirmed){lx.farrowConfirmed=true;save();renderAll();}}">
             <option value="estimated" ${!l.farrowIsActual?'selected':''}>Estimated</option>
             <option value="actual" ${l.farrowIsActual?'selected':''}>Actual</option>
           </select>
@@ -4002,7 +4003,7 @@ if(breeders.some(b=>typeof b.hutAssignment==='number'===false&&b.hutAssignment!=
 // Auto-archive any litter that has a wean date but isn't marked archived yet
 litters.forEach(l=>{if(l.weanDate&&!l.archived)l.archived=true;});
 // Auto-confirm farrowing for existing litters that have piglets entered
-litters.forEach(l=>{if(l.piglets&&l.piglets.length>0&&l.farrowConfirmed===undefined)l.farrowConfirmed=true;});
+litters.forEach(l=>{if((l.piglets&&l.piglets.length>0||l.farrowIsActual)&&l.farrowConfirmed===undefined)l.farrowConfirmed=true;});
 // Migrate checkpoints from days-based to date-based
 litters.forEach(l=>{
   const farrow=getLitterFarrow(l);
