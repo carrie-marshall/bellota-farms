@@ -1609,7 +1609,7 @@ function toggleArchive(lid){
 
 
 function delL(lid){
-  if(!confirm('Permanently delete this litter and all its piglet records?'))return;
+  if(!confirm('Permanently delete this litter and all its piglet records? The sow will remain in the Breeding Tracker.'))return;
   // Unlink from any breeder that references this litter
   breeders.forEach(b=>{if(b.litterId===lid){b.litterId='';b.confirmed=false;}});
   // Remove litter — save() persists both litters and breeders
@@ -2160,8 +2160,10 @@ function resetBarDates(){
 }
 
 function delBreeder(bid){
-  if(!confirm('Remove this female from the Breeding Tracker?'))return;
-  breeders=breeders.filter(b=>b.id!==bid);save();renderBreeders();renderGantt();renderHutTable();
+  if(!confirm('Remove this female from the Breeding Tracker? Her litter records (if any) are preserved in Litter Records.'))return;
+  breeders=breeders.filter(b=>b.id!==bid);
+  save();syncAutoBoars();
+  renderBreeders();renderGantt();renderHutTable();renderHerd();renderTasks();renderSummary();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
