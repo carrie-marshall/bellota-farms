@@ -228,6 +228,17 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
 .fg{grid-template-columns:1fr;}th,td{padding:4px 3px;}.app-header h1{font-size:16px;}.tally-grid{grid-template-columns:repeat(2,1fr);}.dates-grid{grid-template-columns:1fr 1fr;}.gantt-hut-label{width:80px;font-size:9px;}}
 @media print{.header-acts,.btn,.tabs,.expbar,.top-nav,.modal-ov{display:none!important;}.lbody{display:block!important;}.tab-panel{display:block!important;page-break-inside:avoid;}}
 
+
+/* ── WEIGHT CARDS ─────────────────────────────────────────────────────────── */
+.wt-card{background:var(--paper);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden;}
+.wt-card-dead{opacity:.5;}
+.wt-card-hdr{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--blue-pale);border-bottom:1px solid var(--border);}
+.wt-card-id{font-family:'DM Mono',monospace;font-weight:700;font-size:13px;color:var(--blue-dark);}
+.wt-card-body{padding:10px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.wt-card-row{display:flex;align-items:center;gap:8px;}
+.wt-card-lbl{font-size:11px;font-weight:600;color:var(--text-mid);width:60px;flex-shrink:0;}
+.wt-card-val{font-family:'DM Mono',monospace;font-size:12px;font-weight:600;}
+@media(max-width:600px){.wt-card-body{grid-template-columns:1fr;}}
 /* ── HERD & LOCATIONS ─────────────────────────────────────────────────────── */
 .hl-section{margin-bottom:24px;}
 .hl-section-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:var(--radius) var(--radius) 0 0;background:var(--blue-dark);color:#fff;margin-bottom:0;}
@@ -1096,7 +1107,7 @@ function rebuildTabs(l){
   const activeBtn=tabsEl.querySelector('.tab-btn.active');
   const activeTab=activeBtn?activeBtn.dataset.tab:'birth';
   tabsEl.innerHTML='';panelsEl.innerHTML='';
-  const allTabs=[{id:'birth',label:'Birth'},...(l.weightCheckpoints||[]).map(cp=>({id:'wcp-'+cp.id,label:cp.label,cpId:cp.id})),{id:'vax',label:'Vaccines'},{id:'info',label:'Litter Info'}];
+  const allTabs=[{id:'birth',label:'Birth'},...(l.weightCheckpoints||[]).map(cp=>({id:'wcp-'+cp.id,label:cp.label||(cp.targetDate?fmtDate(cp.targetDate):'Checkpoint'),cpId:cp.id})),{id:'vax',label:'Vaccines'},{id:'info',label:'Litter Info'}];
   allTabs.forEach(t=>{const btn=document.createElement('button');btn.className='tab-btn'+(t.id===activeTab?' active':'');btn.dataset.tab=t.id;btn.textContent=t.label;btn.onclick=()=>activateTab(btn,l.id,t.id);tabsEl.appendChild(btn);});
 
   panelsEl.innerHTML+=`
@@ -1117,22 +1128,21 @@ function rebuildTabs(l){
 
   (l.weightCheckpoints||[]).forEach(cp=>{
     const pid='wcp-'+cp.id;
-    const targetDate=getLitterFarrow(l)&&!cp.isWean?addDays(getLitterFarrow(l),cp.days):'';
-    const wd=getWeanDate(l);
     panelsEl.innerHTML+=`
     <div class="tab-panel${activeTab===pid?' active':''}" data-panel="${pid}">
       <div class="wt-tab-hdr">
-        ${cp.isWean
-          ?`<div class="wt-day-input" style="flex:1"><span style="font-weight:700;color:var(--blue-dark)">Weaning Checkpoint</span>
-              <span style="margin-left:16px">Wean Date (source of truth):</span>
-              <input type="date" id="wcp-wdate-${l.id}" value="${wd}" style="width:140px;padding:4px 8px;font-size:13px;font-weight:600;border-color:var(--blue)" onblur="setWeanDate('${l.id}',this.value)" onchange="upL('${l.id}','weanDate',this.value)">
-              <span class="wean-date-display" id="wcp-wfmt-${l.id}">${wd?fmtDate(wd):''}</span></div>`
-          :`<div class="wt-day-input"><span>Label:</span><input type="text" value="${cp.label}" style="width:90px;padding:4px 7px;font-size:12px" onchange="updateCp('${l.id}','${cp.id}','label',this.value)"></div>
-            <div class="wt-day-input"><span>Days post-birth:</span><input type="number" value="${cp.days}" min="1" max="365" style="width:60px;padding:4px 7px" onchange="updateCp('${l.id}','${cp.id}','days',parseInt(this.value)||1);rerenderWeights('${l.id}')"></div>
-            <span style="font-size:11px;color:var(--text-light);font-family:'DM Mono',monospace">Target: ${targetDate?fmtDate(targetDate):'—'}</span>`}
+        <div class="wt-day-input"><span>Label:</span>
+          <input type="text" value="${cp.label||''}" style="width:120px;padding:4px 7px;font-size:12px" placeholder="e.g. Week 1"
+            onchange="updateCp('${l.id}','${cp.id}','label',this.value)">
+        </div>
+        <div class="wt-day-input"><span>Date:</span>
+          <input type="date" id="cp-date-${cp.id}" value="${cp.targetDate||''}" style="padding:4px 7px;font-size:12px"
+            onchange="updateCp('${l.id}','${cp.id}','targetDate',this.value)">
+          <span id="cp-tgt-${cp.id}" style="font-size:11px;color:var(--text-light);font-family:'DM Mono',monospace">${cp.targetDate?fmtDate(cp.targetDate):'—'}</span>
+        </div>
         <button class="btn btn-sm btn-danger" style="margin-left:auto" onclick="removeCp('${l.id}','${cp.id}')">Remove</button>
       </div>
-      <div class="tw"><table><thead id="wh-${cp.id}-${l.id}"></thead><tbody id="wb-${cp.id}-${l.id}"></tbody></table></div>
+      <div id="wt-cards-${cp.id}-${l.id}"></div>
     </div>`;
   });
 
@@ -1250,7 +1260,7 @@ function rebuildTabs(l){
   </div>`;
 
   renderBirthRows(l);
-  (l.weightCheckpoints||[]).forEach(cp=>renderWeightRows(l,cp));
+  (l.weightCheckpoints||[]).forEach(cp=>renderWeightCards(l,cp));
   renderPigVax(l);renderSowVax(l);renderEvs(l);
   renderLitterLocLog(l.id);
 }
@@ -1278,8 +1288,19 @@ function renderBirthRows(l){
       </select></td>
       <td><select onchange="upP('${l.id}','${p.id}','sex',this.value);renderBirthRows(getL('${l.id}'))">${sexOpts}</select></td>
       <td><input type="time" value="${p.timeBorn||''}" onchange="upP('${l.id}','${p.id}','timeBorn',this.value)"></td>
-      <td><input type="number" value="${p.birthOz||''}" step="0.5" placeholder="oz" onchange="upP('${l.id}','${p.id}','birthOz',this.value);rerenderWeights('${l.id}')">
-        <div style="font-size:10px;color:var(--text-light);font-family:'DM Mono',monospace">${p.birthOz?fmtOz(p.birthOz):''}</div></td>
+      <td>
+        <div style="display:flex;align-items:center;gap:3px">
+          <input type="number" min="0" max="99" step="1" value="${splitLbOz(p.birthOz).lb||''}" placeholder="lb"
+            style="width:44px;padding:3px 4px;font-size:12px;text-align:center"
+            onchange="upBirthLbOz('${l.id}','${p.id}',this.value,this.nextElementSibling.nextElementSibling.value)">
+          <span style="font-size:10px">lb</span>
+          <input type="number" min="0" max="15.9" step="0.1" value="${splitLbOz(p.birthOz).oz||''}" placeholder="oz"
+            style="width:48px;padding:3px 4px;font-size:12px;text-align:center"
+            onchange="upBirthLbOz('${l.id}','${p.id}',this.previousElementSibling.previousElementSibling.value,this.value)">
+          <span style="font-size:10px">oz</span>
+        </div>
+        <div style="font-size:10px;color:var(--text-light);font-family:'DM Mono',monospace;margin-top:2px">${p.birthOz?fmtOz(p.birthOz):''}</div>
+      </td>
       <td><input type="text" value="${p.color||''}" placeholder="black, red mark…" onchange="upP('${l.id}','${p.id}','color',this.value)"></td>
       <td><input type="text" value="${p.earNotch||''}" placeholder="1L" style="width:58px" onchange="upP('${l.id}','${p.id}','earNotch',this.value)"></td>
       <td><input type="number" value="${p.nippleCount||''}" min="0" max="20" style="width:44px" onchange="upP('${l.id}','${p.id}','nippleCount',this.value)"></td>
@@ -1295,29 +1316,76 @@ function renderBirthRows(l){
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WEIGHT ROWS
+// WEIGHT CARDS (vertical layout, lb+oz input)
 // ─────────────────────────────────────────────────────────────────────────────
-function renderWeightRows(l,cp){
-  const thead=document.getElementById(`wh-${cp.id}-${l.id}`);
-  const tbody=document.getElementById(`wb-${cp.id}-${l.id}`);
-  if(!tbody||!thead)return;
-  const allCps=l.weightCheckpoints||[];
-  const cpIdx=allCps.findIndex(c=>c.id===cp.id);
-  const priorCps=allCps.slice(0,cpIdx);
-  thead.innerHTML=`<tr><th>#</th><th>Sex</th><th>Color</th><th>Ear Notch</th><th>Status</th><th>Birth Wt</th>${priorCps.map(pc=>`<th class="sub-hdr">${pc.label}</th><th class="sub-hdr">Gain</th>`).join('')}<th>${cp.label} Wt (oz)</th><th>Gain from Birth</th><th>Notes</th></tr>`;
-  tbody.innerHTML='';
-  l.piglets.forEach(p=>{
-    const tr=document.createElement('tr');
-    if(p.status==='dead')tr.classList.add('dead');
-    if(p.status==='mummified'||p.status==='stillborn')tr.classList.add('mum');
-    const statusBadge=`<span class="badge ${p.status==='alive'?'bg-gn':p.status==='dead'?'bg-rd':'bg-yw'}" style="font-size:10px">${p.status}</span>`;
-    const priorCols=priorCps.map(pc=>`<td><div class="prev-wt ${p.weights&&p.weights[pc.id]?gcls(gain(p.birthOz,p.weights[pc.id]).pct,p.birthOz,pc.days):''}" style="min-width:54px">${p.weights&&p.weights[pc.id]?fmtOz(p.weights[pc.id]):'—'}</div></td><td>${p.weights&&p.weights[pc.id]?gcell(p.birthOz,p.weights[pc.id],pc.days):'<div class="gcell"><span class="gpct gn">—</span></div>'}</td>`).join('');
+
+// Parse combined lb+oz string stored as total oz
+function parseLbOz(lb,oz){
+  const l=parseFloat(lb)||0,o=parseFloat(oz)||0;
+  return l*16+o||'';
+}
+function splitLbOz(totalOz){
+  if(!totalOz||isNaN(parseFloat(totalOz)))return{lb:0,oz:''};
+  const v=parseFloat(totalOz);
+  return{lb:Math.floor(v/16),oz:+(v%16).toFixed(1)};
+}
+
+function renderWeightCards(l,cp){
+  const con=document.getElementById(`wt-cards-${cp.id}-${l.id}`);
+  if(!con)return;
+  const piglets=l.piglets.filter(p=>p.status!=='stillborn'&&p.status!=='mummified');
+  if(!piglets.length){con.innerHTML='<div style="color:var(--text-light);font-size:12px;padding:12px">No piglets to weigh.</div>';return;}
+  con.innerHTML=piglets.map(p=>{
     const wval=(p.weights||{})[cp.id]||'';
-    tr.innerHTML=`<td class="pnum">${p.num}</td><td style="font-size:11px;text-align:center">${p.sex||'—'}</td><td style="font-size:11px;max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.color||'—'}</td><td style="font-size:11px;font-family:'DM Mono',monospace">${p.earNotch||'—'}</td><td>${statusBadge}</td><td style="font-family:'DM Mono',monospace;font-size:11px;white-space:nowrap">${p.birthOz?fmtOz(p.birthOz):'—'}</td>${priorCols}<td><input type="number" value="${wval}" step="0.5" placeholder="oz" onchange="upW('${l.id}','${p.id}','${cp.id}',this.value);rerenderWeights('${l.id}')"><div style="font-size:10px;color:var(--text-light);font-family:'DM Mono',monospace">${wval?fmtOz(wval):''}</div></td><td>${gcell(p.birthOz,wval,cp.days)}</td><td><input type="text" value="${p.notes||''}" placeholder="notes…" onchange="upP('${l.id}','${p.id}','notes',this.value)"></td>`;
-    tbody.appendChild(tr);
+    const{lb,oz}=splitLbOz(wval);
+    const birthSplit=splitLbOz(p.birthOz);
+    const g=gain(p.birthOz,wval);
+    const statusCls=p.status==='dead'?'bg-rd':p.status==='alive'?'bg-gn':'bg-yw';
+    const gainCls=g.pct!==null?gcls(g.pct,p.birthOz,0):'';
+    return`<div class="wt-card${p.status==='dead'?' wt-card-dead':''}">
+      <div class="wt-card-hdr">
+        <span class="wt-card-id">${p.earNotch?p.earNotch:'#'+p.num}</span>
+        <span style="font-size:11px;color:var(--text-mid)">${p.sex||'?'} · ${p.color||'—'}</span>
+        <span class="badge ${statusCls}" style="font-size:10px">${p.status}</span>
+      </div>
+      <div class="wt-card-body">
+        <div class="wt-card-row">
+          <span class="wt-card-lbl">Birth Wt</span>
+          <span class="wt-card-val">${p.birthOz?(birthSplit.lb>0?birthSplit.lb+' lb ':'')+birthSplit.oz+' oz':'—'}</span>
+        </div>
+        <div class="wt-card-row">
+          <span class="wt-card-lbl">Weight</span>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input type="number" min="0" max="99" step="1" value="${lb||''}" placeholder="lb"
+              style="width:52px;padding:4px 6px;font-size:13px;text-align:center;font-family:'DM Mono',monospace"
+              onchange="upWLbOz('${l.id}','${p.id}','${cp.id}',this.value,document.getElementById('wt-oz-${cp.id}-${p.id}').value)">
+            <span style="font-size:11px;color:var(--text-mid)">lb</span>
+            <input type="number" id="wt-oz-${cp.id}-${p.id}" min="0" max="15.9" step="0.1" value="${oz||''}" placeholder="oz"
+              style="width:56px;padding:4px 6px;font-size:13px;text-align:center;font-family:'DM Mono',monospace"
+              onchange="upWLbOz('${l.id}','${p.id}','${cp.id}',document.getElementById('wt-lb-${cp.id}-${p.id}').value||0,this.value)">
+            <span style="font-size:11px;color:var(--text-mid)">oz</span>
+          </div>
+        </div>
+        ${wval?`<div class="wt-card-row">
+          <span class="wt-card-lbl">Gain</span>
+          <span class="wt-card-val ${gainCls}" style="font-weight:600">${g.oz!==null?fmtOz(g.oz):''} ${g.pct!==null?'('+g.pct+'%)':''}</span>
+        </div>`:''}
+        <div class="wt-card-row">
+          <span class="wt-card-lbl">Notes</span>
+          <input type="text" value="${p.notes||''}" placeholder="notes…" style="flex:1;font-size:11px;padding:3px 6px"
+            onchange="upP('${l.id}','${p.id}','notes',this.value)">
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Fix lb input IDs after render (template literal limitation)
+  piglets.forEach(p=>{
+    const lbInp=con.querySelector(`input[onchange*="wt-oz-${cp.id}-${p.id}"]`);
+    if(lbInp)lbInp.id=`wt-lb-${cp.id}-${p.id}`;
   });
 }
-function rerenderWeights(lid){const l=getL(lid);if(!l)return;(l.weightCheckpoints||[]).forEach(cp=>renderWeightRows(l,cp));}
+function rerenderWeights(lid){const l=getL(lid);if(!l)return;(l.weightCheckpoints||[]).forEach(cp=>renderWeightCards(l,cp));}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VACCINE ROWS
@@ -1403,6 +1471,15 @@ const getL=lid=>litters.find(l=>l.id===lid);
 function upL(lid,f,v){const l=getL(lid);if(l){l[f]=v;save();}}
 function upP(lid,pid,f,v){const l=getL(lid);if(!l)return;const p=l.piglets.find(x=>x.id===pid);if(p){p[f]=v;save();}}
 function upW(lid,pid,cpid,v){const l=getL(lid);if(!l)return;const p=l.piglets.find(x=>x.id===pid);if(p){if(!p.weights)p.weights={};p.weights[cpid]=v;save();}}
+function upBirthLbOz(lid,pid,lb,oz){
+  const totalOz=parseLbOz(lb,oz);
+  upP(lid,pid,'birthOz',totalOz===''?'':String(totalOz));
+  rerenderWeights(lid);
+}
+function upWLbOz(lid,pid,cpid,lb,oz){
+  const totalOz=parseLbOz(lb,oz);
+  upW(lid,pid,cpid,totalOz===''?'':String(totalOz));
+}
 function upPV(lid,idx,f,v){const l=getL(lid);if(!l||!l.pigVax)return;l.pigVax[idx][f]=v;save();}
 function upSV(lid,idx,f,v){const l=getL(lid);if(!l||!l.sowVax)return;l.sowVax[idx][f]=v;save();}
 function upE(lid,eid,f,v){const l=getL(lid);if(!l)return;const e=l.events.find(x=>x.id===eid);if(e){e[f]=v;save();}}
@@ -1419,7 +1496,7 @@ function setWeanDate(lid,val){
   if(val&&l.locationLog&&l.locationLog.length){
     const lastLitLoc=l.locationLog[l.locationLog.length-1];
     l.piglets.forEach(p=>{
-      if(p.status==='stillborn'||p.status==='mummified')return;
+      if(p.status==='stillborn'||p.status==='mummified'||p.status==='dead')return;
       if(!p.locationLog)p.locationLog=[];
       // Only seed if piglet has no location entries yet
       if(!p.locationLog.length){
@@ -1454,21 +1531,27 @@ function updateCp(lid,cpid,field,val){
   const l=getL(lid);if(!l)return;
   const cp=l.weightCheckpoints.find(c=>c.id===cpid);if(!cp)return;
   cp[field]=val;save();
+  // Update tab button label when label or date changes
   const btn=document.querySelector(`.lbody[data-id="${lid}"] .tab-btn[data-tab="wcp-${cpid}"]`);
-  if(btn&&field==='label')btn.textContent=val;
+  if(btn){
+    const lbl=cp.label||(cp.targetDate?fmtDate(cp.targetDate):'Checkpoint');
+    btn.textContent=lbl;
+  }
+  // Update target date display if date changed
+  const tgt=document.getElementById(`cp-tgt-${cpid}`);
+  if(tgt&&field==='targetDate')tgt.textContent=val?fmtDate(val):'—';
+  // Re-render weights when date changes (affects gain calculations)
+  if(field==='targetDate')rerenderWeights(lid);
 }
 function addCp(lid){
   const l=getL(lid);if(!l)return;
-  const wIdx=l.weightCheckpoints.findIndex(c=>c.isWean);
-  const cp={id:uid(),label:'New Checkpoint',days:14,isWean:false};
-  if(wIdx>=0)l.weightCheckpoints.splice(wIdx,0,cp);else l.weightCheckpoints.push(cp);
+  const cp={id:uid(),label:'Weight Check',targetDate:'',isWean:false};
+  l.weightCheckpoints.push(cp);
   save();rebuildTabs(l);toast('Checkpoint added');
 }
 function removeCp(lid,cpid){
   const l=getL(lid);if(!l)return;
-  const cp=l.weightCheckpoints.find(c=>c.id===cpid);
-  if(cp&&cp.isWean){toast('Cannot remove the Weaning checkpoint');return;}
-  if(!confirm('Remove this weight checkpoint? Weights will be lost.'))return;
+  if(!confirm('Remove this weight checkpoint? Recorded weights for this date will be lost.'))return;
   l.weightCheckpoints=l.weightCheckpoints.filter(c=>c.id!==cpid);
   l.piglets.forEach(p=>{if(p.weights)delete p.weights[cpid];});
   save();rebuildTabs(l);
@@ -1610,11 +1693,19 @@ function saveBreeder(){
   };
   if(editId){
     const b=breeders.find(x=>x.id===editId);
-    if(b)Object.assign(b,data);
+    if(b){
+      const oldSow=b.sow;
+      Object.assign(b,data);
+      // If sow was renamed, propagate to her linked litter record
+      if(data.sow!==oldSow&&b.litterId){
+        const l=getL(b.litterId);
+        if(l){l.sow=data.sow;save();}
+      }
+    }
   } else {
     breeders.push({id:uid(),...data,confirmed:false,litterId:null,hutAssignment:null});
   }
-  save();syncAutoBoars();closeModal('ab-modal');renderBreeders();renderGantt();renderHutTable();
+  save();syncAutoBoars();closeModal('ab-modal');renderBreeders();renderGantt();renderHutTable();renderAll();
   toast(editId?`${sow} updated`:`${sow} added to Breeding Tracker`);
 }
 
@@ -2520,7 +2611,7 @@ function buildHerdEntities(){
     const wd=getWeanDate(l);
     const weaned=wd&&wd<=today;
     l.piglets.forEach(p=>{
-      if(p.status==='stillborn'||p.status==='mummified')return;
+      if(p.status==='stillborn'||p.status==='mummified'||p.status==='dead')return;
       if(!p.locationLog)p.locationLog=[];
       const desig=p.designation||'undecided';
       const sex=p.sex||'';
@@ -2531,6 +2622,8 @@ function buildHerdEntities(){
       // Only show as individual if weaned OR promoted to Breeder/Boar
       const isPromoted=desig==='Breeding Female'||desig==='Boar';
       if(!weaned&&!isPromoted)return;
+      // Dead piglets don't appear in location tracking after death
+      if(p.status==='dead')return;
       const label=p.earNotch||`#${p.num}`;
       result[section].push({
         id:'pig-'+l.id+'-'+p.id,
@@ -3908,6 +4001,15 @@ if(breeders.some(b=>typeof b.hutAssignment==='number'===false&&b.hutAssignment!=
 litters.forEach(l=>{if(l.weanDate&&!l.archived)l.archived=true;});
 // Auto-confirm farrowing for existing litters that have piglets entered
 litters.forEach(l=>{if(l.piglets&&l.piglets.length>0&&l.farrowConfirmed===undefined)l.farrowConfirmed=true;});
+// Migrate checkpoints from days-based to date-based
+litters.forEach(l=>{
+  const farrow=getLitterFarrow(l);
+  (l.weightCheckpoints||[]).forEach(cp=>{
+    if(cp.days!==undefined&&cp.targetDate===undefined){
+      cp.targetDate=farrow&&!cp.isWean?addDays(farrow,cp.days):'';
+    }
+  });
+});
 
 scrubIntegrity();
 renderAll();
