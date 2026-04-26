@@ -1131,6 +1131,23 @@ function rebuildTabs(l){
       <th>Birth Wt (oz)</th><th>Color / Markings</th><th>Ear Notch</th><th>Nipples</th><th>Castration Date</th><th>Designation</th><th>Notes</th><th></th>
     </tr></thead><tbody id="bb-${l.id}"></tbody></table></div>
     <div style="margin-top:10px"><button class="btn btn-sm btn-success" onclick="addPiglet('${l.id}')">+ Add Piglet</button></div>
+    <!-- Litter weight for birth -->
+    <div style="margin:12px 0 0;padding:12px 14px;background:var(--blue-pale);border:1px solid var(--blue-light);border-radius:8px">
+      <div style="font-weight:700;color:var(--blue-dark);font-size:12px;margin-bottom:8px">Birth Litter Weight (optional)</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <input type="number" id="blwt-lb-${l.id}" min="0" max="999" step="1"
+          value="${splitLbOz(l.birthLitterWeightOz).lb||''}" placeholder="lb"
+          style="width:60px;padding:5px 8px;font-size:14px;text-align:center;font-family:'DM Mono',monospace"
+          onchange="updateBirthLitterWt('${l.id}',this.value,document.getElementById('blwt-oz-${l.id}').value||0)">
+        <span style="font-size:12px;color:var(--text-mid)">lb</span>
+        <input type="number" id="blwt-oz-${l.id}" min="0" max="15.9" step="0.1"
+          value="${splitLbOz(l.birthLitterWeightOz).oz||''}" placeholder="oz"
+          style="width:64px;padding:5px 8px;font-size:14px;text-align:center;font-family:'DM Mono',monospace"
+          onchange="updateBirthLitterWt('${l.id}',document.getElementById('blwt-lb-${l.id}').value||0,this.value)">
+        <span style="font-size:12px;color:var(--text-mid)">oz</span>
+        ${l.birthLitterWeightOz?`<span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--blue-dark);margin-left:8px">${fmtOz(l.birthLitterWeightOz)}</span>`:''}
+      </div>
+    </div>
   </div>`;
 
   (l.weightCheckpoints||[]).forEach(cp=>{
@@ -1240,18 +1257,30 @@ function rebuildTabs(l){
         </div>
       </div>
       <div class="fgrp"><label>Wean Date</label>
-        <input type="date" id="wean-date-input-${l.id}" value="${getWeanDate(l)||''}"
-          onblur="setWeanDate('${l.id}',this.value)"
-          onchange="upL('${l.id}','weanDate',this.value)">
-        ${getWeanDate(l)?`<div style="font-size:11px;color:var(--green);font-weight:600;margin-top:3px">✓ ${fmtDate(getWeanDate(l))}</div>`:'<div style="font-size:11px;color:var(--text-light);margin-top:3px">Enter date to trigger weaning cascade (vaccines, archive, location)</div>'}
+        ${getWeanDate(l)
+          ?`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span style="font-family:'DM Mono',monospace;font-size:15px;font-weight:700;color:var(--green)">✓ ${fmtDate(getWeanDate(l))}</span>
+              <span style="font-size:11px;color:var(--text-light)">All cascades applied</span>
+              <button class="btn btn-ghost btn-sm" style="font-size:11px;color:var(--text-mid)" onclick="editWeanDate('${l.id}')">Edit</button>
+            </div>`
+          :`<div id="wean-picker-${l.id}" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <input type="date" id="wean-date-input-${l.id}" value="">
+              <button class="btn btn-success btn-sm" onclick="confirmWeanDate('${l.id}')">✓ Confirm Wean Date</button>
+            </div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:3px">Sets wean date, triggers vaccines, archives litter, seeds pig locations</div>`}
       </div>
       <div class="fgrp"><label>Farrowing Hut</label>
         <div class="ro-display">${(()=>{const br=breeders.find(b=>b.litterId===l.id);const ha=br?br.hutAssignment:null;return ha?(['1','2','3','4','5'].includes(ha)?'Barn — Hut '+ha:ha):(l.stall||'Set in Breeding Tracker');})()}</div>
         <span style="font-size:10px;color:var(--text-light);margin-top:2px">Assigned in Breeding Tracker — edit there to change</span>
       </div>
     </div>
-    <div class="stitle" style="font-size:13px">Location History (Sow + Litter)</div>
-    <div style="font-size:11px;color:var(--text-light);margin-bottom:8px">Tracks where this sow and litter are housed. Use "Farrowing Barn" for the farrowing period — same log used in Herd &amp; Locations tab.</div>
+    <div class="stitle" style="font-size:13px;display:flex;align-items:center;justify-content:space-between">
+      <span>📍 Location Log — Sow + Litter</span>
+      <span style="font-size:10px;font-weight:400;color:var(--text-light)">This is the place to log where this sow and litter are</span>
+    </div>
+    <div style="font-size:11px;background:var(--blue-pale);border:1px solid var(--blue-light);border-radius:6px;padding:8px 12px;margin-bottom:10px">
+      <strong>Add location entries here</strong> as the sow+litter move. The autocomplete suggests hut options (e.g. "Barn — Hut 1 — Closed"). These entries appear in the Herd &amp; Locations tab. After weaning, each pig gets their own location log there.
+    </div>
     <div id="litter-loc-log-${l.id}" style="margin-bottom:10px"></div>
     <div style="display:grid;grid-template-columns:130px 1fr 1fr auto;gap:8px;align-items:end;margin-bottom:14px">
       <div class="fgrp"><label>Date</label><input type="date" id="litloc-date-${l.id}" value="${new Date().toISOString().split('T')[0]}"></div>
@@ -1377,7 +1406,8 @@ function splitLbOz(totalOz){
 function renderWeightCards(l,cp){
   const con=document.getElementById(`wt-cards-${cp.id}-${l.id}`);
   if(!con)return;
-  const piglets=l.piglets.filter(p=>p.status!=='stillborn'&&p.status!=='mummified');
+  // Exclude stillborn, mummified, and dead pigs from weight checkpoints
+  const piglets=l.piglets.filter(p=>p.status==='alive');
   if(!piglets.length){con.innerHTML='<div style="color:var(--text-light);font-size:12px;padding:12px">No piglets to weigh.</div>';return;}
   con.innerHTML=piglets.map(p=>{
     const wval=(p.weights||{})[cp.id]||'';
@@ -1393,22 +1423,28 @@ function renderWeightCards(l,cp){
         <span class="badge ${statusCls}" style="font-size:10px">${p.status}</span>
       </div>
       <div class="wt-card-body">
-        <div class="wt-card-row">
+        ${p.birthOz&&!p.birthWeightNA?`<div class="wt-card-row">
           <span class="wt-card-lbl">Birth Wt</span>
-          <span class="wt-card-val">${p.birthOz?(birthSplit.lb>0?birthSplit.lb+' lb ':'')+birthSplit.oz+' oz':'—'}</span>
-        </div>
+          <span class="wt-card-val" style="color:var(--text-light);font-size:11px">${(birthSplit.lb>0?birthSplit.lb+' lb ':'')+birthSplit.oz+' oz'}</span>
+        </div>`:''}
         <div class="wt-card-row">
           <span class="wt-card-lbl">Weight</span>
-          <div style="display:flex;align-items:center;gap:4px">
-            <input type="number" min="0" max="99" step="1" value="${lb||''}" placeholder="lb"
-              style="width:52px;padding:4px 6px;font-size:13px;text-align:center;font-family:'DM Mono',monospace"
-              onchange="upWLbOz('${l.id}','${p.id}','${cp.id}',this.value,document.getElementById('wt-oz-${cp.id}-${p.id}').value)">
-            <span style="font-size:11px;color:var(--text-mid)">lb</span>
-            <input type="number" id="wt-oz-${cp.id}-${p.id}" min="0" max="15.9" step="0.1" value="${oz||''}" placeholder="oz"
-              style="width:56px;padding:4px 6px;font-size:13px;text-align:center;font-family:'DM Mono',monospace"
-              onchange="upWLbOz('${l.id}','${p.id}','${cp.id}',document.getElementById('wt-lb-${cp.id}-${p.id}').value||0,this.value)">
-            <span style="font-size:11px;color:var(--text-mid)">oz</span>
-          </div>
+          ${(p.weights||{})[cp.id+'_na']
+            ?`<div style="display:flex;align-items:center;gap:8px">
+                <span style="font-family:'DM Mono',monospace;color:var(--text-light);font-style:italic">N/A</span>
+                <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:1px 6px" onclick="setWtNA('${l.id}','${p.id}','${cp.id}',false)">Enter</button>
+              </div>`
+            :`<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+                <input type="number" min="0" max="99" step="1" value="${lb||''}" placeholder="lb"
+                  style="width:52px;padding:4px 6px;font-size:13px;text-align:center;font-family:'DM Mono',monospace"
+                  onchange="upWLbOz('${l.id}','${p.id}','${cp.id}',this.value,document.getElementById('wt-oz-${cp.id}-${p.id}').value)">
+                <span style="font-size:11px;color:var(--text-mid)">lb</span>
+                <input type="number" id="wt-oz-${cp.id}-${p.id}" min="0" max="15.9" step="0.1" value="${oz||''}" placeholder="oz"
+                  style="width:56px;padding:4px 6px;font-size:13px;text-align:center;font-family:'DM Mono',monospace"
+                  onchange="upWLbOz('${l.id}','${p.id}','${cp.id}',document.getElementById('wt-lb-${cp.id}-${p.id}').value||0,this.value)">
+                <span style="font-size:11px;color:var(--text-mid)">oz</span>
+                <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:1px 6px;color:var(--text-light)" onclick="setWtNA('${l.id}','${p.id}','${cp.id}',true)" title="Not weighed this checkpoint">N/A</button>
+              </div>`}
         </div>
         ${wval?`<div class="wt-card-row">
           <span class="wt-card-lbl">Gain</span>
@@ -1524,6 +1560,16 @@ function upL(lid,f,v){
   if(f==='weanDate'&&v){/* setWeanDate handles cascade via onblur */}
 }
 function upP(lid,pid,f,v){const l=getL(lid);if(!l)return;const p=l.piglets.find(x=>x.id===pid);if(p){p[f]=v;save();}}
+function setWtNA(lid,pid,cpid,isNA){
+  const l=getL(lid);if(!l)return;
+  const p=l.piglets.find(x=>x.id===pid);if(!p)return;
+  if(!p.weights)p.weights={};
+  if(isNA){p.weights[cpid+'_na']=true;p.weights[cpid]='';}
+  else{delete p.weights[cpid+'_na'];}
+  save();rerenderWeights(lid);
+}
+
+
 function upW(lid,pid,cpid,v){const l=getL(lid);if(!l)return;const p=l.piglets.find(x=>x.id===pid);if(p){if(!p.weights)p.weights={};p.weights[cpid]=v;save();}}
 function toggleBirthWeightNA(lid,pid,isNA){
   const l=getL(lid);if(!l)return;
@@ -1547,6 +1593,26 @@ function upWLbOz(lid,pid,cpid,lb,oz){
 function upPV(lid,idx,f,v){const l=getL(lid);if(!l||!l.pigVax)return;l.pigVax[idx][f]=v;save();}
 function upSV(lid,idx,f,v){const l=getL(lid);if(!l||!l.sowVax)return;l.sowVax[idx][f]=v;save();}
 function upE(lid,eid,f,v){const l=getL(lid);if(!l)return;const e=l.events.find(x=>x.id===eid);if(e){e[f]=v;save();}}
+
+function confirmWeanDate(lid){
+  const inp=document.getElementById(`wean-date-input-${lid}`);
+  if(!inp||!inp.value){toast('Please enter a wean date first');return;}
+  setWeanDate(lid,inp.value);
+}
+function editWeanDate(lid){
+  const l=getL(lid);if(!l)return;
+  // Temporarily unarchive to allow editing, then re-confirm
+  const oldDate=l.weanDate;
+  l.weanDate='';l.archived=false;save();
+  // Re-render the card so the picker appears
+  renderAll();
+  // Pre-fill the picker with the old date
+  setTimeout(()=>{
+    const inp=document.getElementById(`wean-date-input-${lid}`);
+    if(inp)inp.value=oldDate||'';
+  },50);
+}
+
 
 function setWeanDate(lid,val){
   const l=getL(lid);if(!l)return;
@@ -1598,6 +1664,13 @@ function setVaxComplete(lid,type,val){
   else{l.sowVaxComplete=val;l.sowVaxCompleteDate='';}
   save();rebuildTabs(l);
 }
+function updateBirthLitterWt(lid,lb,oz){
+  const l=getL(lid);if(!l)return;
+  l.birthLitterWeightOz=parseLbOz(lb,oz)===''?'':String(parseLbOz(lb,oz));
+  save();
+}
+
+
 function updateCpLitterWt(lid,cpid,lb,oz){
   const l=getL(lid);if(!l)return;
   const cp=(l.weightCheckpoints||[]).find(c=>c.id===cpid);if(!cp)return;
