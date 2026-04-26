@@ -850,7 +850,8 @@ function litTallies(l){
   const stillMum=l.piglets.filter(p=>p.status==='stillborn'||p.status==='mummified').length;
   return{total,bornAlive:total-stillMum,stillMum,diedPost:l.piglets.filter(p=>p.status==='dead').length,alive:l.piglets.filter(p=>p.status==='alive').length};
 }
-const getWeanDate=l=>l.weanDate||'';
+const getWeanDate=l=>l.actualWeanDate||l.estimatedWeanDate||l.weanDate||'';
+const isActuallyWeaned=l=>!!(l.actualWeanDate||(l.weanDate&&!l.estimatedWeanDate));
 
 // Date diff in days (b - a)
 function dateDiff(a,b){
@@ -980,7 +981,7 @@ function createLitter(){
     timeLast:document.getElementById('nl-tl').value,
     interventions:document.getElementById('nl-intv').value.trim(),
     notes:document.getElementById('nl-notes').value.trim(),
-    weanDate:'',
+    weanDate:'',estimatedWeanDate:'',actualWeanDate:'',
     locationLog:litLocLog,
     weightCheckpoints:[
       {id:uid(),label:'Day 1',  days:1, isWean:false},
@@ -1044,8 +1045,8 @@ function renderAll(){
   con.innerHTML='';
   // Sort oldest farrow date first; litters without a date go to the end
   const sortFn=(a,b)=>{if(!a.date&&!b.date)return 0;if(!a.date)return 1;if(!b.date)return -1;return a.date.localeCompare(b.date);};
-  const active=[...litters].filter(l=>!l.archived).sort(sortFn);
-  const archived=[...litters].filter(l=>l.archived).sort(sortFn);
+  const active=[...litters].filter(l=>!isActuallyWeaned(l)&&!l.archived).sort(sortFn);
+  const archived=[...litters].filter(l=>isActuallyWeaned(l)||l.archived).sort(sortFn);
   active.forEach(l=>{
     const c=buildCard(l);
     if(opens.has(l.id)){c.querySelector('.lbody').classList.add('open');const tb=tabs[l.id]||'birth';const btn=c.querySelector(`.tab-btn[data-tab="${tb}"]`);if(btn)activateTab(btn,l.id,tb);}
@@ -1236,6 +1237,11 @@ function rebuildTabs(l){
     <div class="fg" style="margin-bottom:14px">
       <div class="fgrp"><label>Sow Name / ID</label><div class="ro-display">${l.sow||'—'}</div><span style="font-size:10px;color:var(--text-light);margin-top:2px">Edit name in Breeding Tracker</span></div>
       <div class="fgrp"><label>Sow Tag #</label><input type="text" value="${l.sowTag||''}" onchange="upL('${l.id}','sowTag',this.value)"></div>
+      <div class="fgrp"><label>Litter Name</label>
+        <input type="text" value="${l.litterName||''}" placeholder="e.g. La Madre 2025-A"
+          onchange="upL('${l.id}','litterName',this.value)">
+        <span style="font-size:10px;color:var(--text-light);margin-top:2px">Unique name — follows each piglet through the system</span>
+      </div>
       <div class="fgrp"><label>Boar (Sire)</label><input type="text" value="${l.boar||''}" onchange="upL('${l.id}','boar',this.value)"></div>
       <div class="fgrp"><label>Parity</label><input type="number" value="${l.parity||''}" onchange="upL('${l.id}','parity',this.value)"></div>
       <div class="fgrp"><label>Sow Weight (lbs)</label><input type="number" value="${l.sowWt||''}" onchange="upL('${l.id}','sowWt',this.value)"></div>
@@ -1256,18 +1262,22 @@ function rebuildTabs(l){
           </select>
         </div>
       </div>
-      <div class="fgrp"><label>Wean Date</label>
-        ${getWeanDate(l)
-          ?`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <span style="font-family:'DM Mono',monospace;font-size:15px;font-weight:700;color:var(--green)">✓ ${fmtDate(getWeanDate(l))}</span>
-              <span style="font-size:11px;color:var(--text-light)">All cascades applied</span>
-              <button class="btn btn-ghost btn-sm" style="font-size:11px;color:var(--text-mid)" onclick="editWeanDate('${l.id}')">Edit</button>
-            </div>`
-          :`<div id="wean-picker-${l.id}" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <input type="date" id="wean-date-input-${l.id}" value="">
-              <button class="btn btn-success btn-sm" onclick="confirmWeanDate('${l.id}')">✓ Confirm Wean Date</button>
-            </div>
-            <div style="font-size:11px;color:var(--text-light);margin-top:3px">Sets wean date, triggers vaccines, archives litter, seeds pig locations</div>`}
+      <div class="fgrp" style="grid-column:1/-1"><label>Wean Date</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+          <input type="date" id="wean-date-input-${l.id}" value="${getWeanDate(l)||''}"
+            style="padding:5px 8px;font-size:13px">
+          <select id="wean-type-${l.id}" style="padding:5px 8px;font-size:12px"
+            onchange="saveWeanType('${l.id}',this.value)">
+            <option value="estimated" ${!l.actualWeanDate?'selected':''}>Estimated</option>
+            <option value="actual" ${l.actualWeanDate?'selected':''}>Actual</option>
+          </select>
+          <button class="btn btn-success btn-sm" onclick="saveWeanDate('${l.id}')">✓ Save</button>
+          ${getWeanDate(l)?`<span style="font-size:11px;color:var(--green);font-weight:600">${l.actualWeanDate?'✓ Actual — litter archived':'⏳ Estimated — litter stays active'}</span>`:''}
+        </div>
+        <div style="font-size:11px;color:var(--text-light)">
+          <strong>Estimated</strong> — litter stays active, used for planning · 
+          <strong>Actual</strong> — archives litter, separates piglets into their own records
+        </div>
       </div>
       <div class="fgrp"><label>Farrowing Hut</label>
         <div class="ro-display">${(()=>{const br=breeders.find(b=>b.litterId===l.id);const ha=br?br.hutAssignment:null;return ha?(['1','2','3','4','5'].includes(ha)?'Barn — Hut '+ha:ha):(l.stall||'Set in Breeding Tracker');})()}</div>
@@ -1594,31 +1604,38 @@ function upPV(lid,idx,f,v){const l=getL(lid);if(!l||!l.pigVax)return;l.pigVax[id
 function upSV(lid,idx,f,v){const l=getL(lid);if(!l||!l.sowVax)return;l.sowVax[idx][f]=v;save();}
 function upE(lid,eid,f,v){const l=getL(lid);if(!l)return;const e=l.events.find(x=>x.id===eid);if(e){e[f]=v;save();}}
 
-function confirmWeanDate(lid){
-  const inp=document.getElementById(`wean-date-input-${lid}`);
-  if(!inp||!inp.value){toast('Please enter a wean date first');return;}
-  setWeanDate(lid,inp.value);
-}
-function editWeanDate(lid){
+function saveWeanDate(lid){
   const l=getL(lid);if(!l)return;
-  // Temporarily unarchive to allow editing, then re-confirm
-  const oldDate=l.weanDate;
-  l.weanDate='';l.archived=false;save();
-  // Re-render the card so the picker appears
-  renderAll();
-  // Pre-fill the picker with the old date
-  setTimeout(()=>{
-    const inp=document.getElementById(`wean-date-input-${lid}`);
-    if(inp)inp.value=oldDate||'';
-  },50);
+  const inp=document.getElementById(`wean-date-input-${lid}`);
+  const sel=document.getElementById(`wean-type-${lid}`);
+  if(!inp||!inp.value){toast('Please enter a wean date first');return;}
+  const val=inp.value;
+  const isActual=sel&&sel.value==='actual';
+  if(isActual){
+    setWeanDate(lid,val); // full cascade: archive, location seed, pig personas
+  } else {
+    const l2=getL(lid);if(!l2)return;
+    l2.estimatedWeanDate=val;
+    l2.actualWeanDate='';
+    l2.weanDate=val; // keep for backward compat
+    l2.archived=false; // estimated does NOT archive
+    save();
+    const vaxWd=document.getElementById(`vax-wd-${lid}`);if(vaxWd)vaxWd.textContent=fmtDate(val)+' (est.)';
+    renderPigVax(l2);renderSowVax(l2);renderAll();renderTasks();
+    toast(`Estimated wean date set — litter stays active`);
+  }
+}
+function saveWeanType(lid,type){
+  // Just update the toggle — actual save happens on Save button
 }
 
 
 function setWeanDate(lid,val){
   const l=getL(lid);if(!l)return;
-  l.weanDate=val;
-
-  // Auto-archive when weaned, auto-unarchive if wean date is cleared
+  l.actualWeanDate=val;
+  l.weanDate=val; // keep for backward compat
+  l.estimatedWeanDate=val||l.estimatedWeanDate; // preserve estimated if clearing actual
+  // Archive only on actual wean date
   l.archived=!!val;
 
   // When a wean date is set, propagate the litter's last known location
@@ -2744,7 +2761,7 @@ function buildHerdEntities(){
   // If a breeder has an active confirmed litter (not yet weaned), she appears in
   // Active Litters instead, so suppress her from Breeding Females to avoid duplication
   const activeConfirmedLitterSows=new Set(
-    litters.filter(l=>l.farrowConfirmed&&!l.archived).map(l=>l.sow)
+    litters.filter(l=>l.farrowConfirmed&&!isActuallyWeaned(l)&&!l.archived).map(l=>l.sow)
   );
   breeders.forEach(br=>{
     if(activeConfirmedLitterSows.has(br.sow))return; // she's in Active Litters
@@ -2762,7 +2779,7 @@ function buildHerdEntities(){
   litters.forEach(l=>{
     if(!l.locationLog)l.locationLog=[];
     const wd=getWeanDate(l);
-    const isWeaned=wd&&wd<=today;
+    const isWeaned=isActuallyWeaned(l);
     if(isWeaned)return;
     // Only show as Active Litter once farrowing is confirmed
     if(!l.farrowConfirmed)return;
@@ -4167,8 +4184,11 @@ function confirmRestore(){
 breeders.forEach(b=>{if(typeof b.hutAssignment==='number')b.hutAssignment=String(b.hutAssignment);});
 if(breeders.some(b=>typeof b.hutAssignment==='number'===false&&b.hutAssignment!==null))save();
 
-// Auto-archive any litter that has a wean date but isn't marked archived yet
-litters.forEach(l=>{if(l.weanDate&&!l.archived)l.archived=true;});
+// Migrate existing wean dates: treat old weanDate as actualWeanDate
+litters.forEach(l=>{
+  if(l.weanDate&&!l.actualWeanDate)l.actualWeanDate=l.weanDate;
+  if(l.weanDate&&!l.archived)l.archived=true;
+});
 // Auto-confirm farrowing for existing litters that have piglets entered
 litters.forEach(l=>{if((l.piglets&&l.piglets.length>0||l.farrowIsActual)&&l.farrowConfirmed===undefined)l.farrowConfirmed=true;});
 // Migrate checkpoints from days-based to date-based
