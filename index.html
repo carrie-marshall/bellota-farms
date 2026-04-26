@@ -307,6 +307,7 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
 <div class="app-header">
   <div><h1>Bellota Farms — Litter Records</h1><div class="sub">Ibérico Farrowing &amp; Piglet Tracking · California</div></div>
   <div class="header-acts">
+    <span id="save-indicator" style="font-size:11px;color:var(--green);font-weight:600;opacity:0;transition:opacity .4s;padding:4px 8px">✓ Saved</span>
     <button class="btn btn-ghost btn-sm" onclick="backupData()">⬇ Backup</button>
     <button class="btn btn-ghost btn-sm" onclick="openRestoreModal()">⬆ Restore</button>
     <button class="btn btn-ghost btn-sm" onclick="openExportModal()">Export / Print</button>
@@ -770,6 +771,9 @@ let _autoAssignSnapshot=null;
 const save=()=>{
   localStorage.setItem('bf_litters_v6',JSON.stringify(litters));
   localStorage.setItem('bf_breeders_v2',JSON.stringify(breeders));
+  // Flash save indicator
+  const ind=document.getElementById('save-indicator');
+  if(ind){clearTimeout(ind._t);ind.style.opacity='1';ind._t=setTimeout(()=>ind.style.opacity='0',1800);}
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1108,7 +1112,7 @@ function rebuildTabs(l){
   const activeBtn=tabsEl.querySelector('.tab-btn.active');
   const activeTab=activeBtn?activeBtn.dataset.tab:'birth';
   tabsEl.innerHTML='';panelsEl.innerHTML='';
-  const allTabs=[{id:'birth',label:'Birth'},...(l.weightCheckpoints||[]).map(cp=>({id:'wcp-'+cp.id,label:cp.label||(cp.targetDate?fmtDate(cp.targetDate):'Checkpoint'),cpId:cp.id})),{id:'vax',label:'Vaccines'},{id:'info',label:'Litter Info'}];
+  const allTabs=[{id:'birth',label:'Piglets'},...(l.weightCheckpoints||[]).map(cp=>({id:'wcp-'+cp.id,label:cp.label||(cp.targetDate?fmtDate(cp.targetDate):'Checkpoint'),cpId:cp.id})),{id:'vax',label:'Vaccines'},{id:'info',label:'Litter Info'}];
   allTabs.forEach(t=>{const btn=document.createElement('button');btn.className='tab-btn'+(t.id===activeTab?' active':'');btn.dataset.tab=t.id;btn.textContent=t.label;btn.onclick=()=>activateTab(btn,l.id,t.id);tabsEl.appendChild(btn);});
 
   panelsEl.innerHTML+=`
@@ -1143,6 +1147,31 @@ function rebuildTabs(l){
         </div>
         <button class="btn btn-sm btn-danger" style="margin-left:auto" onclick="removeCp('${l.id}','${cp.id}')">Remove</button>
       </div>
+      <!-- Litter weight section -->
+      <div style="margin:12px 14px;padding:12px 14px;background:var(--blue-pale);border:1px solid var(--blue-light);border-radius:8px">
+        <div style="font-weight:700;color:var(--blue-dark);font-size:12px;margin-bottom:10px">Litter Weight (optional — enter if you cannot weigh individually)</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <input type="number" id="lwt-lb-${cp.id}" min="0" max="999" step="1"
+            value="${splitLbOz(cp.litterWeightOz).lb||''}" placeholder="lb"
+            style="width:60px;padding:5px 8px;font-size:14px;text-align:center;font-family:'DM Mono',monospace"
+            onchange="updateCpLitterWt('${l.id}','${cp.id}',this.value,document.getElementById('lwt-oz-${cp.id}').value||0)">
+          <span style="font-size:12px;color:var(--text-mid)">lb</span>
+          <input type="number" id="lwt-oz-${cp.id}" min="0" max="15.9" step="0.1"
+            value="${splitLbOz(cp.litterWeightOz).oz||''}" placeholder="oz"
+            style="width:64px;padding:5px 8px;font-size:14px;text-align:center;font-family:'DM Mono',monospace"
+            onchange="updateCpLitterWt('${l.id}','${cp.id}',document.getElementById('lwt-lb-${cp.id}').value||0,this.value)">
+          <span style="font-size:12px;color:var(--text-mid)">oz</span>
+          ${cp.litterWeightOz?`<span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--blue-dark);margin-left:8px">${fmtOz(cp.litterWeightOz)}</span>`:''}
+          ${(()=>{
+            // Show calculated total from individual weights for comparison
+            const indivTotal=l.piglets.filter(p=>p.status==='alive'&&p.weights&&p.weights[cp.id])
+              .reduce((s,p)=>s+(parseFloat(p.weights[cp.id])||0),0);
+            return indivTotal>0
+              ?`<span style="font-size:11px;color:var(--text-light);margin-left:8px">Individual total: ${fmtOz(indivTotal)}</span>`:'';
+          })()}
+        </div>
+      </div>
+      <!-- Individual pig weight cards -->
       <div id="wt-cards-${cp.id}-${l.id}"></div>
     </div>`;
   });
@@ -1528,6 +1557,17 @@ function setVaxComplete(lid,type,val){
   else{l.sowVaxComplete=val;l.sowVaxCompleteDate='';}
   save();rebuildTabs(l);
 }
+function updateCpLitterWt(lid,cpid,lb,oz){
+  const l=getL(lid);if(!l)return;
+  const cp=(l.weightCheckpoints||[]).find(c=>c.id===cpid);if(!cp)return;
+  cp.litterWeightOz=parseLbOz(lb,oz)===''?'':String(parseLbOz(lb,oz));
+  save();
+  // Update displayed total
+  const disp=document.getElementById(`lwt-disp-${cpid}`);
+  if(disp)disp.textContent=cp.litterWeightOz?fmtOz(cp.litterWeightOz):'';
+}
+
+
 function updateCp(lid,cpid,field,val){
   const l=getL(lid);if(!l)return;
   const cp=l.weightCheckpoints.find(c=>c.id===cpid);if(!cp)return;
@@ -1546,7 +1586,7 @@ function updateCp(lid,cpid,field,val){
 }
 function addCp(lid){
   const l=getL(lid);if(!l)return;
-  const cp={id:uid(),label:'Weight Check',targetDate:'',isWean:false};
+  const cp={id:uid(),label:'Weight Check',targetDate:'',isWean:false,litterWeightOz:''};
   l.weightCheckpoints.push(cp);
   save();rebuildTabs(l);toast('Checkpoint added');
 }
@@ -2463,7 +2503,7 @@ function runExport(){
     if(inc.weights&&l.weightCheckpoints&&l.weightCheckpoints.length){
       rows.push(csvR(['WEIGHT CHECKPOINTS']));
       l.weightCheckpoints.forEach(cp=>{
-        rows.push(csvR([cp.label,'Days:',cp.days,cp.isWean?'(Weaning)':'','Target:',getLitterFarrow(l)?addDays(getLitterFarrow(l),cp.days):'']));
+        rows.push(csvR([`Weight Checkpoint: ${cp.label||''}`,cp.targetDate?fmtDate(cp.targetDate):'','Litter Weight:',cp.litterWeightOz?fmtOz(cp.litterWeightOz):'—']));
         rows.push(csvR(['#','Sex','Color','Ear Notch','Status','Birth Wt (oz)','Weight (oz)','Wt Display','Gain (oz)','% Gain','Notes']));
         l.piglets.forEach(p=>{const wval=(p.weights||{})[cp.id]||'';const g=gain(p.birthOz,wval);rows.push(csvR([p.num,p.sex||'',p.color||'',p.earNotch||'',p.status,p.birthOz||'',wval,wval?fmtOz(wval):'',g.oz!==null?g.oz+' oz':'',g.pct!==null?g.pct+'%':'',p.notes||'']));});
         rows.push('');
