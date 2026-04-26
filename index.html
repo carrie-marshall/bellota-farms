@@ -4048,10 +4048,16 @@ litters.forEach(l=>{if((l.piglets&&l.piglets.length>0||l.farrowIsActual)&&l.farr
 litters.forEach(l=>{
   const farrow=getLitterFarrow(l);
   (l.weightCheckpoints||[]).forEach(cp=>{
-    if(cp.days!==undefined&&cp.targetDate===undefined){
+    // Run migration if targetDate is missing OR empty AND days is set
+    if(cp.days!==undefined&&!cp.targetDate){
       cp.targetDate=farrow&&!cp.isWean?addDays(farrow,cp.days):'';
     }
+    // Clean up old auto-generated day-count labels like "7 days", "Day 7", "Week 2 (14d)"
+    if(cp.label&&/^\d+\s*day|^day\s*\d+|^\w+\s+\d+\s*\(\d+d\)/i.test(cp.label)){
+      cp.label=''; // clear so the date shows instead
+    }
   });
+  save();
 });
 
 scrubIntegrity();
