@@ -1217,7 +1217,7 @@ function rebuildTabs(l){
   <div class="tab-panel${activeTab==='info'?' active':''}" data-panel="info">
     <div class="stitle">Sow &amp; Sire</div>
     <div class="fg" style="margin-bottom:14px">
-      <div class="fgrp"><label>Sow Name / ID</label><input type="text" value="${l.sow}" onchange="upL('${l.id}','sow',this.value)"></div>
+      <div class="fgrp"><label>Sow Name / ID</label><div class="ro-display">${l.sow||'—'}</div><span style="font-size:10px;color:var(--text-light);margin-top:2px">Edit name in Breeding Tracker</span></div>
       <div class="fgrp"><label>Sow Tag #</label><input type="text" value="${l.sowTag||''}" onchange="upL('${l.id}','sowTag',this.value)"></div>
       <div class="fgrp"><label>Boar (Sire)</label><input type="text" value="${l.boar||''}" onchange="upL('${l.id}','boar',this.value)"></div>
       <div class="fgrp"><label>Parity</label><input type="number" value="${l.parity||''}" onchange="upL('${l.id}','parity',this.value)"></div>
@@ -1512,7 +1512,17 @@ function activateTab(btn,lid,tab){
   const p=b.querySelector(`.tab-panel[data-panel="${tab}"]`);if(p)p.classList.add('active');
 }
 const getL=lid=>litters.find(l=>l.id===lid);
-function upL(lid,f,v){const l=getL(lid);if(l){l[f]=v;save();}}
+function upL(lid,f,v){
+  const l=getL(lid);if(!l)return;
+  l[f]=v;save();
+  // If sow name changed, propagate to linked breeder record
+  if(f==='sow'){
+    const br=breeders.find(b=>b.litterId===lid);
+    if(br&&br.sow!==v){br.sow=v;save();}
+  }
+  // If wean date changed here (safety), trigger setWeanDate cascade
+  if(f==='weanDate'&&v){/* setWeanDate handles cascade via onblur */}
+}
 function upP(lid,pid,f,v){const l=getL(lid);if(!l)return;const p=l.piglets.find(x=>x.id===pid);if(p){p[f]=v;save();}}
 function upW(lid,pid,cpid,v){const l=getL(lid);if(!l)return;const p=l.piglets.find(x=>x.id===pid);if(p){if(!p.weights)p.weights={};p.weights[cpid]=v;save();}}
 function toggleBirthWeightNA(lid,pid,isNA){
@@ -1548,17 +1558,22 @@ function setWeanDate(lid,val){
   // When a wean date is set, propagate the litter's last known location
   // to each piglet's individual locationLog (if they don't already have one)
   if(val&&l.locationLog&&l.locationLog.length){
-    const lastLitLoc=l.locationLog[l.locationLog.length-1];
+    const sorted=[...l.locationLog].sort((a,b)=>a.date.localeCompare(b.date));
+    const lastLitLoc=sorted[sorted.length-1];
+    // Seed breeder's own locationLog from litter's last location
+    const br=breeders.find(b=>b.litterId===l.id);
+    if(br){
+      if(!br.locationLog)br.locationLog=[];
+      if(lastLitLoc&&!br.locationLog.find(e=>e.date===val)){
+        br.locationLog.push({id:uid(),date:val,location:lastLitLoc.location||'',notes:'From litter at weaning'});
+      }
+    }
+    // Seed each piglet's locationLog
     l.piglets.forEach(p=>{
       if(p.status==='stillborn'||p.status==='mummified'||p.status==='dead')return;
       if(!p.locationLog)p.locationLog=[];
-      // Only seed if piglet has no location entries yet
       if(!p.locationLog.length){
-        p.locationLog.push({
-          id:uid(),date:val,
-          location:lastLitLoc.location||'',
-          notes:'From litter at weaning'
-        });
+        p.locationLog.push({id:uid(),date:val,location:lastLitLoc.location||'',notes:'From litter at weaning'});
       }
     });
   }
@@ -2121,28 +2136,34 @@ function removeLocEntryOnDate(logArr,date){
 function syncBreederLocations(b, prevMoveIn, prevMoveOut){
   if(!b.locationLog)b.locationLog=[];
   const linkedLitter=b.litterId?getL(b.litterId):null;
-  if(linkedLitter&&!linkedLitter.locationLog)linkedLitter.locationLog=[];
+  const hasActiveLitter=linkedLitter&&!linkedLitter.archived;
 
-  // Remove old move-in entry if date changed
+  // Single source of truth:
+  // - During active litter: write ONLY to litter locationLog (sow moves with litter)
+  // - No active litter: write to breeder locationLog directly
+  const targetLog=hasActiveLitter?linkedLitter.locationLog:b.locationLog;
+  if(hasActiveLitter&&!linkedLitter.locationLog)linkedLitter.locationLog=[];
+
+  // Remove old entries if dates changed
   if(prevMoveIn&&prevMoveIn!==b.actualMoveIn){
+    removeLocEntryOnDate(targetLog,prevMoveIn);
+    // Also clean both logs for safety
     removeLocEntryOnDate(b.locationLog,prevMoveIn);
     if(linkedLitter)removeLocEntryOnDate(linkedLitter.locationLog,prevMoveIn);
   }
-  // Remove old move-out entry if date changed
   if(prevMoveOut&&prevMoveOut!==b.actualMoveOut){
+    removeLocEntryOnDate(targetLog,prevMoveOut);
     removeLocEntryOnDate(b.locationLog,prevMoveOut);
     if(linkedLitter)removeLocEntryOnDate(linkedLitter.locationLog,prevMoveOut);
   }
-  // Write new move-in: "Farrowing Barn"
+  // Write new move-in
   if(b.actualMoveIn){
-    const hutNote=b.hutAssignment?`Hut ${b.hutAssignment}`:'';
-    writeLocEntry(b.locationLog,b.actualMoveIn,'Farrowing Barn',hutNote);
-    if(linkedLitter)writeLocEntry(linkedLitter.locationLog,b.actualMoveIn,'Farrowing Barn',hutNote);
+    const hutNote=b.hutAssignment?(['1','2','3','4','5'].includes(b.hutAssignment)?`Barn — Hut ${b.hutAssignment} — Closed`:b.hutAssignment):'';
+    writeLocEntry(targetLog,b.actualMoveIn,'Farrowing Barn',hutNote);
   }
-  // Write new move-out: "Left Farrowing Barn"
+  // Write new move-out
   if(b.actualMoveOut){
-    writeLocEntry(b.locationLog,b.actualMoveOut,'Left Farrowing Barn','');
-    if(linkedLitter)writeLocEntry(linkedLitter.locationLog,b.actualMoveOut,'Left Farrowing Barn','');
+    writeLocEntry(targetLog,b.actualMoveOut,'Left Farrowing Barn','');
   }
   saveHerd();
 }
