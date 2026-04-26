@@ -474,6 +474,7 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
   <div class="stitle">Sow &amp; Sire</div>
   <div class="fg" style="margin-bottom:14px">
     <div class="fgrp"><label>Sow Name / ID *</label><input type="text" id="nl-sow" placeholder="e.g. La Madre"></div>
+    <div class="fgrp"><label>Litter Name</label><input type="text" id="nl-lname" placeholder="e.g. La Madre 2025-A"><span style="font-size:10px;color:var(--text-light);margin-top:2px">Unique name that follows each piglet</span></div>
     <div class="fgrp"><label>Sow Tag #</label><input type="text" id="nl-tag" placeholder="x906260"></div>
     <div class="fgrp"><label>Boar (Sire)</label><input type="text" id="nl-boar" placeholder="e.g. TX30 Professor"></div>
     <div class="fgrp"><label>Parity (litter #)</label><input type="number" id="nl-parity" min="1" placeholder="1"></div>
@@ -495,7 +496,7 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
       </div>
     </div>
     <input type="hidden" id="nl-expfarrow">
-    <div class="fgrp"><label>Hut # within Farrowing Barn</label><input type="text" id="nl-stall" placeholder="e.g. Hut 1"></div>
+    <!-- Hut comes from Breeding Tracker hutAssignment, shown read-only -->
     <div class="fgrp"><label>Move-in to Farrowing Barn</label><input type="date" id="nl-moved-in"></div>
     <div class="fgrp"><label>Move-out from Farrowing Barn</label><input type="date" id="nl-moved-out"></div>
   </div>
@@ -914,7 +915,7 @@ function nlAutoExp(){
     if(nd)nd.value=exp;
   }
 }
-const NL_FIELDS=['nl-sow','nl-tag','nl-boar','nl-parity','nl-swt','nl-gest','nl-breed','nl-stall','nl-moved-in','nl-moved-out','nl-tf','nl-tl','nl-intv','nl-notes'];
+const NL_FIELDS=['nl-sow','nl-lname','nl-tag','nl-boar','nl-parity','nl-swt','nl-gest','nl-breed','nl-stall','nl-moved-in','nl-moved-out','nl-tf','nl-tl','nl-intv','nl-notes'];
 function openNLModal(prefill){
   document.getElementById('nl-date').value='';
   const ft=document.getElementById('nl-farrow-type');if(ft)ft.value='estimated';
@@ -963,6 +964,7 @@ function createLitter(){
   if(movedOut)writeLocEntry(litLocLog,movedOut,'Left Farrowing Barn','');
   const l={
     id:uid(),sow,
+    litterName:document.getElementById('nl-lname').value.trim(),
     date:document.getElementById('nl-date').value,
     farrowIsActual:(document.getElementById('nl-farrow-type').value==='actual'),
     farrowConfirmed:(document.getElementById('nl-farrow-type').value==='actual'),
@@ -989,7 +991,7 @@ function createLitter(){
     ],
     piglets:Array.from({length:cnt},(_,i)=>({
       id:uid(),num:i+1,status:'alive',sex:'',color:'',earNotch:'',
-      timeBorn:'',birthOz:'',nippleCount:'',
+      timeBorn:'',birthOz:'',birthWeightNA:false,nippleCount:'',
       castrationDate:'',notes:'',designation:'undecided',weights:{},locationLog:[],
       departDate:'',departReason:'',departNotes:''
     })),
@@ -1071,7 +1073,7 @@ function buildCard(l){
   const{total,bornAlive,stillMum,diedPost,alive}=litTallies(l);
   const dur=calcDur(l.timeFirst,l.timeLast);
   const wd=getWeanDate(l);
-  const sowLbl=l.sowTag?`${l.sow} <span style="font-size:12px;font-weight:400;color:var(--text-mid)">· ${l.sowTag}</span>`:l.sow;
+  const sowLbl=(l.sowTag?`${l.sow} <span style="font-size:12px;font-weight:400;color:var(--text-mid)">· ${l.sowTag}</span>`:l.sow)+(l.litterName?` <span style="font-size:12px;font-weight:400;color:var(--text-mid);font-style:italic">· ${l.litterName}</span>`:'');
   const stallTag=l.stall?`<span style="font-size:11px;background:var(--blue-pale);color:var(--blue-dark);border:1px solid var(--blue-light);border-radius:4px;padding:1px 7px;margin-left:6px">${l.stall}</span>`:'';
   // Find linked breeder for breed date
   const br=breeders.find(b=>b.litterId===l.id);
@@ -1243,9 +1245,9 @@ function rebuildTabs(l){
           onchange="upL('${l.id}','weanDate',this.value)">
         ${getWeanDate(l)?`<div style="font-size:11px;color:var(--green);font-weight:600;margin-top:3px">✓ ${fmtDate(getWeanDate(l))}</div>`:'<div style="font-size:11px;color:var(--text-light);margin-top:3px">Enter date to trigger weaning cascade (vaccines, archive, location)</div>'}
       </div>
-      <div class="fgrp"><label>Hut # within Farrowing Barn</label>
-        <input type="text" value="${l.stall||''}" placeholder="e.g. Hut 1" onchange="upL('${l.id}','stall',this.value)">
-        <span style="font-size:10px;color:var(--text-light);margin-top:2px">Internal reference only — location log uses "Farrowing Barn"</span>
+      <div class="fgrp"><label>Farrowing Hut</label>
+        <div class="ro-display">${(()=>{const br=breeders.find(b=>b.litterId===l.id);const ha=br?br.hutAssignment:null;return ha?(['1','2','3','4','5'].includes(ha)?'Barn — Hut '+ha:ha):(l.stall||'Set in Breeding Tracker');})()}</div>
+        <span style="font-size:10px;color:var(--text-light);margin-top:2px">Assigned in Breeding Tracker — edit there to change</span>
       </div>
     </div>
     <div class="stitle" style="font-size:13px">Location History (Sow + Litter)</div>
@@ -1312,7 +1314,8 @@ function renderBirthRows(l){
     const isDeceased = p.status==='dead'||p.status==='stillborn'||p.status==='mummified';
     const isMale=p.sex==='M'||p.sex==='Barrow';
     const sexOpts=`<option value="">—</option><option value="F" ${p.sex==='F'?'selected':''}>F</option><option value="M" ${p.sex==='M'?'selected':''}>M</option>${p.castrationDate&&isMale?`<option value="Barrow" ${p.sex==='Barrow'?'selected':''}>Barrow</option>`:''}`;
-    const castCell=isMale?`<input type="date" value="${p.castrationDate||''}" onchange="upP('${l.id}','${p.id}','castrationDate',this.value);renderBirthRows(getL('${l.id}'))">`:`<span style="color:var(--text-light);font-size:11px">—</span>`;
+    const isBoar=p.designation==='Boar';
+    const castCell=(isMale&&!isBoar)?`<input type="date" value="${p.castrationDate||''}" onchange="upP('${l.id}','${p.id}','castrationDate',this.value);renderBirthRows(getL('${l.id}'))">`:`<span style="color:var(--text-light);font-size:11px">${isBoar?'keeper':'—'}</span>`;
     tr.innerHTML=`
       <td class="pnum">${p.num}</td>
       <td><select style="width:86px" onchange="upP('${l.id}','${p.id}','status',this.value);renderBirthRows(getL('${l.id}'));rerenderWeights('${l.id}');updateLitterHeader('${l.id}')">
@@ -1324,17 +1327,23 @@ function renderBirthRows(l){
       <td><select onchange="upP('${l.id}','${p.id}','sex',this.value);renderBirthRows(getL('${l.id}'))">${sexOpts}</select></td>
       <td><input type="time" value="${p.timeBorn||''}" onchange="upP('${l.id}','${p.id}','timeBorn',this.value)"></td>
       <td>
-        <div style="display:flex;align-items:center;gap:3px">
-          <input type="number" min="0" max="99" step="1" value="${splitLbOz(p.birthOz).lb||''}" placeholder="lb"
-            style="width:44px;padding:3px 4px;font-size:12px;text-align:center"
-            onchange="upBirthLbOz('${l.id}','${p.id}',this.value,this.nextElementSibling.nextElementSibling.value)">
-          <span style="font-size:10px">lb</span>
-          <input type="number" min="0" max="15.9" step="0.1" value="${splitLbOz(p.birthOz).oz||''}" placeholder="oz"
-            style="width:48px;padding:3px 4px;font-size:12px;text-align:center"
-            onchange="upBirthLbOz('${l.id}','${p.id}',this.previousElementSibling.previousElementSibling.value,this.value)">
-          <span style="font-size:10px">oz</span>
-        </div>
-        <div style="font-size:10px;color:var(--text-light);font-family:'DM Mono',monospace;margin-top:2px">${p.birthOz?fmtOz(p.birthOz):''}</div>
+        ${p.birthWeightNA
+          ?`<div style="display:flex;align-items:center;gap:6px">
+              <span style="font-family:'DM Mono',monospace;color:var(--text-light);font-style:italic;font-size:11px">N/A</span>
+              <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:1px 6px" onclick="toggleBirthWeightNA('${l.id}','${p.id}',false)">Enter weight</button>
+            </div>`
+          :`<div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap">
+              <input type="number" min="0" max="99" step="1" value="${splitLbOz(p.birthOz).lb||''}" placeholder="lb"
+                style="width:44px;padding:3px 4px;font-size:12px;text-align:center"
+                onchange="upBirthLbOz('${l.id}','${p.id}',this.value,this.nextElementSibling.nextElementSibling.value)">
+              <span style="font-size:10px">lb</span>
+              <input type="number" min="0" max="15.9" step="0.1" value="${splitLbOz(p.birthOz).oz||''}" placeholder="oz"
+                style="width:48px;padding:3px 4px;font-size:12px;text-align:center"
+                onchange="upBirthLbOz('${l.id}','${p.id}',this.previousElementSibling.previousElementSibling.value,this.value)">
+              <span style="font-size:10px">oz</span>
+              <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:1px 6px;color:var(--text-light)" onclick="toggleBirthWeightNA('${l.id}','${p.id}',true)" title="Mark as not weighed at birth">N/A</button>
+            </div>
+            <div style="font-size:10px;color:var(--text-light);font-family:'DM Mono',monospace;margin-top:2px">${p.birthOz?fmtOz(p.birthOz):''}</div>`}
       </td>
       <td><input type="text" value="${p.color||''}" placeholder="black, red mark…" onchange="upP('${l.id}','${p.id}','color',this.value)"></td>
       <td><input type="text" value="${p.earNotch||''}" placeholder="1L" style="width:58px" onchange="upP('${l.id}','${p.id}','earNotch',this.value)"></td>
@@ -1506,6 +1515,16 @@ const getL=lid=>litters.find(l=>l.id===lid);
 function upL(lid,f,v){const l=getL(lid);if(l){l[f]=v;save();}}
 function upP(lid,pid,f,v){const l=getL(lid);if(!l)return;const p=l.piglets.find(x=>x.id===pid);if(p){p[f]=v;save();}}
 function upW(lid,pid,cpid,v){const l=getL(lid);if(!l)return;const p=l.piglets.find(x=>x.id===pid);if(p){if(!p.weights)p.weights={};p.weights[cpid]=v;save();}}
+function toggleBirthWeightNA(lid,pid,isNA){
+  const l=getL(lid);if(!l)return;
+  const p=l.piglets.find(x=>x.id===pid);if(!p)return;
+  p.birthWeightNA=isNA;
+  if(isNA)p.birthOz=''; // clear weight when marking N/A
+  save();
+  renderBirthRows(l);
+}
+
+
 function upBirthLbOz(lid,pid,lb,oz){
   const totalOz=parseLbOz(lb,oz);
   upP(lid,pid,'birthOz',totalOz===''?'':String(totalOz));
@@ -1608,7 +1627,7 @@ function addPiglet(lid){
   const l=getL(lid);if(!l)return;
   flushBirthRows(lid); // save any in-progress typed values before re-render
   const num=l.piglets.length+1;
-  l.piglets.push({id:uid(),num,status:'alive',sex:'',color:'',earNotch:'',timeBorn:'',birthOz:'',nippleCount:'',castrationDate:'',notes:'',designation:'undecided',weights:{},locationLog:[]});
+  l.piglets.push({id:uid(),num,status:'alive',sex:'',color:'',earNotch:'',timeBorn:'',birthOz:'',birthWeightNA:false,nippleCount:'',castrationDate:'',notes:'',designation:'undecided',weights:{},locationLog:[]});
   save();renderBirthRows(l);rerenderWeights(lid);toast(`Piglet #${num} added`);
 }
 
@@ -2563,6 +2582,12 @@ function runExport(){
 // ─────────────────────────────────────────────────────────────────────────────
 
 let locationNames=JSON.parse(localStorage.getItem('bf_locations')||'[]');
+// Ensure hut sub-location options are always available
+const HUT_LOCATIONS=['Barn — Hut 1 — Closed','Barn — Hut 1 — Behind Barn',
+  'Barn — Hut 2 — Closed','Barn — Hut 2 — Behind Barn',
+  'Barn — Hut 3 — Closed','Barn — Hut 3 — Behind Barn',
+  'Barn — Hut 4 — Closed','Barn — Hut 4 — Behind Barn',
+  'Barn — Hut 5 — Closed','Barn — Hut 5 — Behind Barn'];
 let manualBoars=JSON.parse(localStorage.getItem('bf_boars')||'[]');
 // Pre-seed Farrowing Barn as default location
 if(!locationNames.includes('Farrowing Barn'))locationNames.push('Farrowing Barn');
@@ -2578,11 +2603,12 @@ function addLocationName(name){
 }
 
 function refreshLocDatalist(){
-  document.querySelectorAll('#loc-datalist, #cohort-location').forEach(el=>{
-    if(el.tagName==='DATALIST') el.innerHTML=locationNames.map(n=>`<option value="${n}">`).join('');
+  const allLocOpts=[...new Set([...HUT_LOCATIONS,...locationNames])];
+  document.querySelectorAll('#loc-datalist').forEach(el=>{
+    if(el.tagName==='DATALIST') el.innerHTML=allLocOpts.map(n=>`<option value="${n}">`).join('');
   });
   const dl=document.getElementById('loc-datalist');
-  if(dl) dl.innerHTML=locationNames.map(n=>`<option value="${n}">`).join('');
+  if(dl) dl.innerHTML=allLocOpts.map(n=>`<option value="${n}">`).join('');
 }
 
 // Get location on a specific date (last entry on or before date)
@@ -2678,7 +2704,7 @@ function buildHerdEntities(){
       result[section].push({
         id:'pig-'+l.id+'-'+p.id,
         name:label, tag:p.earNotch||'',
-        sub:`${l.sow} litter · ${sex||'?'} · ${desig}${p.color?' · '+p.color:''}${l.boar?' · Sire: '+l.boar:''}`,  
+        sub:`${l.litterName||l.sow+' litter'} · ${sex||'?'} · ${desig}${p.color?' · '+p.color:''}${l.boar?' · Sire: '+l.boar:''}`,  
         locationLog:p.locationLog, entityRef:p, entityType:'piglet', litterId:l.id,
         isDeceased:p.status==='dead', deathDate:p.deathDate||null,
         farrowDate:l.date, weanDate:wd, designation:desig, sex,
