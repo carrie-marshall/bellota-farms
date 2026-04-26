@@ -1185,7 +1185,7 @@ function rebuildTabs(l){
       <span>Breed date: <strong style="color:var(--text)">${l.breedDate?fmtDate(l.breedDate):'set in Litter Info'}</strong></span>
       <span>Expected farrow: <strong style="color:var(--text)">${l.expectedFarrow?fmtDate(l.expectedFarrow):'set in Litter Info'}</strong></span>
       <span>Farrowing: <strong style="color:var(--text)">${l.date?fmtDate(l.date):'not set'}</strong></span>
-      <span>Wean date: <strong class="wean-date-display" id="vax-wd-${l.id}">${wd?fmtDate(wd):'set on Weaning tab'}</strong></span>
+      <span>Wean date: <strong class="wean-date-display" id="vax-wd-${l.id}">${wd?fmtDate(wd):'set in Litter Info'}</strong></span>
     </div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:10px 12px;background:${l.pigVaxComplete?'var(--green-bg)':'var(--gray-bg)'};border-radius:8px;border:1px solid ${l.pigVaxComplete?'var(--green-bd)':'var(--border)'}">
       <input type="checkbox" ${l.pigVaxComplete?'checked':''} id="pvc-${l.id}" onchange="setVaxComplete('${l.id}','pig',this.checked)">
@@ -1237,7 +1237,12 @@ function rebuildTabs(l){
           </select>
         </div>
       </div>
-      <div class="fgrp"><label>Wean Date (set on Weaning tab)</label><div class="ro-display wean-date-display">${getWeanDate(l)?fmtDate(getWeanDate(l)):'Not set — use Weaning tab'}</div></div>
+      <div class="fgrp"><label>Wean Date</label>
+        <input type="date" id="wean-date-input-${l.id}" value="${getWeanDate(l)||''}"
+          onblur="setWeanDate('${l.id}',this.value)"
+          onchange="upL('${l.id}','weanDate',this.value)">
+        ${getWeanDate(l)?`<div style="font-size:11px;color:var(--green);font-weight:600;margin-top:3px">✓ ${fmtDate(getWeanDate(l))}</div>`:'<div style="font-size:11px;color:var(--text-light);margin-top:3px">Enter date to trigger weaning cascade (vaccines, archive, location)</div>'}
+      </div>
       <div class="fgrp"><label>Hut # within Farrowing Barn</label>
         <input type="text" value="${l.stall||''}" placeholder="e.g. Hut 1" onchange="upL('${l.id}','stall',this.value)">
         <span style="font-size:10px;color:var(--text-light);margin-top:2px">Internal reference only — location log uses "Farrowing Barn"</span>
@@ -1540,9 +1545,11 @@ function setWeanDate(lid,val){
   }
 
   save();
+  // Update wean date input if it exists (in Litter Info tab)
+  const wdInput=document.getElementById(`wean-date-input-${lid}`);if(wdInput)wdInput.value=val;
   const wcInput=document.getElementById(`wcp-wdate-${lid}`);if(wcInput)wcInput.value=val;
   const wcFmt=document.getElementById(`wcp-wfmt-${lid}`);if(wcFmt)wcFmt.textContent=val?fmtDate(val):'';
-  const vaxWd=document.getElementById(`vax-wd-${lid}`);if(vaxWd)vaxWd.textContent=val?fmtDate(val):'set on Weaning tab';
+  const vaxWd=document.getElementById(`vax-wd-${lid}`);if(vaxWd)vaxWd.textContent=val?fmtDate(val):'set in Litter Info';
   renderPigVax(l);renderSowVax(l);renderAll();renderTasks();
   if(val)toast(`${l.sow}'s litter weaned and archived — find it in Archived Litters below`);
 }
