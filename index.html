@@ -1436,7 +1436,7 @@ function renderSowVax(l){
   if(!l.sowVax||l.sowVax.length!==SOW_VAXS.length){l.sowVax=SOW_VAXS.map(v=>{const ex=(l.sowVax||[]).find(e=>e.id===v.id);return ex?{...v,...ex}:{...v,done:false,actualDate:'',actualNotes:''};});save();}
   tb.innerHTML='';
   l.sowVax.forEach((vax,idx)=>{
-    let exp='';if(vax.anchor==='breed'&&l.breedDate)exp=addDays(l.breedDate,vax.offsetDays);else if(vax.anchor==='farrow'&&l.expectedFarrow)exp=addDays(l.expectedFarrow,vax.offsetDays);
+    let exp='';if(vax.anchor==='breed'&&l.breedDate)exp=addDays(l.breedDate,vax.offsetDays);else if(vax.anchor==='farrow'&&getLitterFarrow(l))exp=addDays(getLitterFarrow(l),vax.offsetDays);
     const tr=document.createElement('tr');if(vax.done)tr.classList.add('vdone');if(vax.supp)tr.style.background='rgba(245,160,35,.05)';
     tr.innerHTML=`<td style="text-align:center"><input type="checkbox" ${vax.done?'checked':''} onchange="upSV('${l.id}',${idx},'done',this.checked);renderSowVax(getL('${l.id}'))"></td><td class="vname" style="font-weight:500;white-space:nowrap">${vax.supp?'[SUPP] ':''}${vax.label}</td><td style="font-family:'DM Mono',monospace;font-size:11px">${vax.dose}</td><td style="font-size:11px;color:${vax.giltsOnly?'var(--orange)':'var(--text-mid)'}">${vax.giltsOnly?'★ First parity gilts':'All females'}</td><td style="font-family:'DM Mono',monospace;font-size:11px">${exp?fmtDate(exp):`<span style="color:var(--text-light)">Set ${vax.anchor} date in Litter Info</span>`}</td><td><input type="date" value="${vax.actualDate||''}" onchange="upSV('${l.id}',${idx},'actualDate',this.value)"></td><td><input type="text" value="${vax.actualNotes||''}" placeholder="${vax.note}" onchange="upSV('${l.id}',${idx},'actualNotes',this.value)"></td>`;
     tb.appendChild(tr);
@@ -1543,7 +1543,7 @@ function setWeanDate(lid,val){
   const wcInput=document.getElementById(`wcp-wdate-${lid}`);if(wcInput)wcInput.value=val;
   const wcFmt=document.getElementById(`wcp-wfmt-${lid}`);if(wcFmt)wcFmt.textContent=val?fmtDate(val):'';
   const vaxWd=document.getElementById(`vax-wd-${lid}`);if(vaxWd)vaxWd.textContent=val?fmtDate(val):'set on Weaning tab';
-  renderPigVax(l);renderAll();renderTasks();
+  renderPigVax(l);renderSowVax(l);renderAll();renderTasks();
   if(val)toast(`${l.sow}'s litter weaned and archived — find it in Archived Litters below`);
 }
 function autoExpFarrowLitter(lid){
