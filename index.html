@@ -475,6 +475,13 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
   <div class="fg" style="margin-bottom:14px">
     <div class="fgrp"><label>Sow Name / ID *</label><input type="text" id="nl-sow" placeholder="e.g. La Madre"></div>
     <div class="fgrp"><label>Litter Name</label><input type="text" id="nl-lname" placeholder="e.g. La Madre 2025-A"><span style="font-size:10px;color:var(--text-light);margin-top:2px">Unique name that follows each piglet</span></div>
+    <div class="fgrp"><label>Prop 12 Status <span style="color:var(--red)">*</span></label>
+      <select id="nl-prop12" style="font-size:13px;padding:5px 8px">
+        <option value="">— select —</option>
+        <option value="compliant">✓ Prop 12 Compliant</option>
+        <option value="not_compliant">✗ Not Prop 12 Compliant</option>
+      </select>
+    </div>
     <div class="fgrp"><label>Sow Tag #</label><input type="text" id="nl-tag" placeholder="x906260"></div>
     <div class="fgrp"><label>Boar (Sire)</label><input type="text" id="nl-boar" placeholder="e.g. TX30 Professor"></div>
     <div class="fgrp"><label>Parity (litter #)</label><input type="number" id="nl-parity" min="1" placeholder="1"></div>
@@ -916,7 +923,7 @@ function nlAutoExp(){
     if(nd)nd.value=exp;
   }
 }
-const NL_FIELDS=['nl-sow','nl-lname','nl-tag','nl-boar','nl-parity','nl-swt','nl-gest','nl-breed','nl-stall','nl-moved-in','nl-moved-out','nl-tf','nl-tl','nl-intv','nl-notes'];
+const NL_FIELDS=['nl-sow','nl-lname','nl-prop12','nl-tag','nl-boar','nl-parity','nl-swt','nl-gest','nl-breed','nl-stall','nl-moved-in','nl-moved-out','nl-tf','nl-tl','nl-intv','nl-notes'];
 function openNLModal(prefill){
   document.getElementById('nl-date').value='';
   const ft=document.getElementById('nl-farrow-type');if(ft)ft.value='estimated';
@@ -966,6 +973,7 @@ function createLitter(){
   const l={
     id:uid(),sow,
     litterName:document.getElementById('nl-lname').value.trim(),
+    prop12:document.getElementById('nl-prop12').value||null,
     date:document.getElementById('nl-date').value,
     farrowIsActual:(document.getElementById('nl-farrow-type').value==='actual'),
     farrowConfirmed:(document.getElementById('nl-farrow-type').value==='actual'),
@@ -1087,6 +1095,7 @@ function buildCard(l){
     <div><div class="ltitle">${sowLbl}${stallTag}${breedStr}${farrowStr}</div>
     <div class="lmeta">${l.boar?'x '+l.boar:''}${dur?' · '+dur:''}${l.parity?' · Parity '+l.parity:''}${wd?' · Weaned '+fmtDate(wd):''}</div></div>
     <div class="badges">
+      ${l.prop12==='compliant'?'<span class="badge" style="background:#1a7a3c;color:#fff;font-size:10px">✓ P12</span>':l.prop12==='not_compliant'?'<span class="badge" style="background:#c53030;color:#fff;font-size:10px">✗ P12</span>':'<span class="badge" style="background:var(--orange);color:#fff;font-size:10px">P12?</span>'}
       ${l.farrowConfirmed
         ?`<span class="badge bg-blue">${total} born</span><span class="badge bg-gn">${alive} alive</span>${diedPost?'<span class="badge bg-rd">'+diedPost+' died</span>':''}${stillMum?'<span class="badge bg-yw">'+stillMum+' still/mum</span>':''}`
         :'<span class="badge" style="background:var(--orange);color:#fff">Farrowing unconfirmed</span>'}
@@ -1241,6 +1250,19 @@ function rebuildTabs(l){
         <input type="text" value="${l.litterName||''}" placeholder="e.g. La Madre 2025-A"
           onchange="upL('${l.id}','litterName',this.value)">
         <span style="font-size:10px;color:var(--text-light);margin-top:2px">Unique name — follows each piglet through the system</span>
+      </div>
+      <div class="fgrp" style="grid-column:1/-1"><label>Prop 12 Status <span style="color:var(--red)">*</span></label>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn ${l.prop12==='compliant'?'btn-success':'btn-ghost'}" style="flex:1;padding:8px;font-size:12px;font-weight:600"
+            onclick="upL('${l.id}','prop12','compliant');renderAll()">
+            ✓ Prop 12 Compliant
+          </button>
+          <button class="btn ${l.prop12==='not_compliant'?'btn-danger':'btn-ghost'}" style="flex:1;padding:8px;font-size:12px;font-weight:600"
+            onclick="upL('${l.id}','prop12','not_compliant');renderAll()">
+            ✗ Not Prop 12 Compliant
+          </button>
+        </div>
+        ${!l.prop12?'<div style="font-size:11px;color:var(--orange);margin-top:4px">⚠ Prop 12 status not set — required for all litters</div>':''}
       </div>
       <div class="fgrp"><label>Boar (Sire)</label><input type="text" value="${l.boar||''}" onchange="upL('${l.id}','boar',this.value)"></div>
       <div class="fgrp"><label>Parity</label><input type="number" value="${l.parity||''}" onchange="upL('${l.id}','parity',this.value)"></div>
@@ -2623,7 +2645,7 @@ function runExport(){
     rows.push(csvR([`=== LITTER: ${l.sow} — ${l.date||'date unknown'} ===`]));
     if(inc.header){
       rows.push(csvR(['Sow',l.sow,'Tag',l.sowTag||'','Boar',l.boar||'','Parity',l.parity||'']));
-      rows.push(csvR(['Farrow Date',l.date||'','Wean Date',wd,'Breed Date',l.breedDate||'','Expected Farrow',l.expectedFarrow||'']));
+      rows.push(csvR(['Farrow Date',l.date||'','Wean Date',wd,'Breed Date',l.breedDate||'','Expected Farrow',l.expectedFarrow||'','Prop 12',l.prop12==='compliant'?'Compliant':l.prop12==='not_compliant'?'Not Compliant':'Not Set']));
       rows.push(csvR(['Stall',l.stall||'','Moved In',l.movedIn||'','Moved Out',l.movedOut||'']));
       rows.push(csvR(['Sow Wt',l.sowWt||'','Gestation',l.gestation||'','Duration',calcDur(l.timeFirst,l.timeLast)]));
       rows.push(csvR(['Total Born',total,'Born Alive',bornAlive,'Stillborn/Mum',stillMum,'Died Post',diedPost,'Alive',alive]));
@@ -2772,6 +2794,7 @@ function buildHerdEntities(){
       locationLog:br.locationLog, entityRef:br, entityType:'breeder',
       isDeceased:false, deathDate:null, farrowDate:null,
       neverOnsite:br.neverOnsite||false,
+      prop12:(br.litterId?getL(br.litterId)||null:null)?.prop12||null,
     });
   });
 
@@ -2788,7 +2811,7 @@ function buildHerdEntities(){
       sub:`Farrowed ${l.date?fmtDate(l.date):'?'}${wd?' · Wean '+fmtDate(wd):''}${l.boar?' · Sire: '+l.boar:''}`,
       locationLog:l.locationLog, entityRef:l, entityType:'litter',
       isDeceased:false, deathDate:null, farrowDate:l.date,
-      isActive:true, weanDate:wd, sow:l.sow,
+      isActive:true, weanDate:wd, sow:l.sow, prop12:l.prop12||null,
       pigletCount:l.piglets.filter(p=>p.status!=='stillborn'&&p.status!=='mummified').length,
     });
   });
@@ -2815,7 +2838,8 @@ function buildHerdEntities(){
       result[section].push({
         id:'pig-'+l.id+'-'+p.id,
         name:label, tag:p.earNotch||'',
-        sub:`${l.litterName||l.sow+' litter'} · ${sex||'?'} · ${desig}${p.color?' · '+p.color:''}${l.boar?' · Sire: '+l.boar:''}`,  
+        sub:`${l.litterName||l.sow+' litter'} · ${sex||'?'} · ${desig}${p.color?' · '+p.color:''}${l.boar?' · Sire: '+l.boar:''}`,
+      prop12:l.prop12||null,  
         locationLog:p.locationLog, entityRef:p, entityType:'piglet', litterId:l.id,
         isDeceased:p.status==='dead', deathDate:p.deathDate||null,
         farrowDate:l.date, weanDate:wd, designation:desig, sex,
@@ -2859,7 +2883,12 @@ function renderHerdSection(containerId, entities, title, hdrCls, subtitle){
   const rows=entities.map(e=>{
     const cl=currentLoc(e.locationLog);
     const isLitter=e.entityType==='litter';
-    const nameHtml=`<div class="animal-name">${e.name}${e.tag&&e.tag!==e.name?` <span style="font-size:11px;font-weight:400;color:var(--text-light)">· ${e.tag}</span>`:''}</div>
+    const p12badge=e.prop12==='compliant'
+      ?'<span style="display:inline-block;font-size:9px;font-weight:700;background:#1a7a3c;color:#fff;border-radius:3px;padding:1px 5px;margin-left:4px">P12 ✓</span>'
+      :e.prop12==='not_compliant'
+      ?'<span style="display:inline-block;font-size:9px;font-weight:700;background:#c53030;color:#fff;border-radius:3px;padding:1px 5px;margin-left:4px">P12 ✗</span>'
+      :'<span style="display:inline-block;font-size:9px;font-weight:700;background:var(--orange);color:#fff;border-radius:3px;padding:1px 5px;margin-left:4px">P12?</span>';
+    const nameHtml=`<div class="animal-name">${e.name}${e.tag&&e.tag!==e.name?` <span style="font-size:11px;font-weight:400;color:var(--text-light)">· ${e.tag}</span>`:''}${p12badge}</div>
       <div class="animal-sub">${e.sub}${e.isDeceased?` <span style="color:var(--red);font-weight:600">· Deceased${e.deathDate?' '+fmtDate(e.deathDate):''}</span>`:''}${isLitter&&!e.isActive?' <span style="color:var(--green);font-weight:600">· Weaned</span>':''}${e.neverOnsite?' <span style="font-size:10px;background:var(--gray-bg);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--text-light)">never onsite</span>':''}</div>`;
     const locHtml=cl
       ?`<div class="loc-current">${cl.location}</div><div class="loc-since">Since ${fmtDate(cl.date)}${cl.notes?' · '+cl.notes:''}</div>`
