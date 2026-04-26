@@ -1095,7 +1095,7 @@ function buildCard(l){
     <div><div class="ltitle">${sowLbl}${stallTag}${breedStr}${farrowStr}</div>
     <div class="lmeta">${l.boar?'x '+l.boar:''}${dur?' · '+dur:''}${l.parity?' · Parity '+l.parity:''}${wd?' · Weaned '+fmtDate(wd):''}</div></div>
     <div class="badges">
-      ${l.prop12==='compliant'?'<span class="badge" style="background:#1a7a3c;color:#fff;font-size:10px">✓ P12</span>':l.prop12==='not_compliant'?'<span class="badge" style="background:#c53030;color:#fff;font-size:10px">✗ P12</span>':'<span class="badge" style="background:var(--orange);color:#fff;font-size:10px">P12?</span>'}
+      ${l.prop12==='compliant'?`<span id="p12-badge-${l.id}" class="badge" style="background:#1a7a3c;color:#fff;font-size:10px">✓ P12</span>`:l.prop12==='not_compliant'?`<span id="p12-badge-${l.id}" class="badge" style="background:#c53030;color:#fff;font-size:10px">✗ P12</span>`:`<span id="p12-badge-${l.id}" class="badge" style="background:var(--orange);color:#fff;font-size:10px">P12?</span>`}
       ${l.farrowConfirmed
         ?`<span class="badge bg-blue">${total} born</span><span class="badge bg-gn">${alive} alive</span>${diedPost?'<span class="badge bg-rd">'+diedPost+' died</span>':''}${stillMum?'<span class="badge bg-yw">'+stillMum+' still/mum</span>':''}`
         :'<span class="badge" style="background:var(--orange);color:#fff">Farrowing unconfirmed</span>'}
@@ -1253,16 +1253,16 @@ function rebuildTabs(l){
       </div>
       <div class="fgrp" style="grid-column:1/-1"><label>Prop 12 Status <span style="color:var(--red)">*</span></label>
         <div style="display:flex;gap:8px;margin-top:4px">
-          <button class="btn ${l.prop12==='compliant'?'btn-success':'btn-ghost'}" style="flex:1;padding:8px;font-size:12px;font-weight:600"
-            onclick="upL('${l.id}','prop12','compliant');renderAll()">
+          <button id="p12-btn-compliant-${l.id}" class="btn ${l.prop12==='compliant'?'btn-success':'btn-ghost'}" style="flex:1;padding:8px;font-size:12px;font-weight:600"
+            onclick="setProp12('${l.id}','compliant')">
             ✓ Prop 12 Compliant
           </button>
-          <button class="btn ${l.prop12==='not_compliant'?'btn-danger':'btn-ghost'}" style="flex:1;padding:8px;font-size:12px;font-weight:600"
-            onclick="upL('${l.id}','prop12','not_compliant');renderAll()">
+          <button id="p12-btn-not-${l.id}" class="btn ${l.prop12==='not_compliant'?'btn-danger':'btn-ghost'}" style="flex:1;padding:8px;font-size:12px;font-weight:600"
+            onclick="setProp12('${l.id}','not_compliant')">
             ✗ Not Prop 12 Compliant
           </button>
         </div>
-        ${!l.prop12?'<div style="font-size:11px;color:var(--orange);margin-top:4px">⚠ Prop 12 status not set — required for all litters</div>':''}
+        ${!l.prop12?`<div id="p12-warn-${l.id}" style="font-size:11px;color:var(--orange);margin-top:4px">⚠ Prop 12 status not set — required for all litters</div>`:'<div id="p12-warn-'+l.id+'" style="display:none"></div>'}
       </div>
       <div class="fgrp"><label>Boar (Sire)</label><input type="text" value="${l.boar||''}" onchange="upL('${l.id}','boar',this.value)"></div>
       <div class="fgrp"><label>Parity</label><input type="number" value="${l.parity||''}" onchange="upL('${l.id}','parity',this.value)"></div>
@@ -1626,6 +1626,27 @@ function upPV(lid,idx,f,v){const l=getL(lid);if(!l||!l.pigVax)return;l.pigVax[id
 function upSV(lid,idx,f,v){const l=getL(lid);if(!l||!l.sowVax)return;l.sowVax[idx][f]=v;save();}
 function upE(lid,eid,f,v){const l=getL(lid);if(!l)return;const e=l.events.find(x=>x.id===eid);if(e){e[f]=v;save();}}
 
+function setProp12(lid, val){
+  const l=getL(lid);if(!l)return;
+  l.prop12=val;save();
+  // Surgically update the buttons in the Litter Info tab
+  const btnC=document.getElementById(`p12-btn-compliant-${lid}`);
+  const btnN=document.getElementById(`p12-btn-not-${lid}`);
+  if(btnC){btnC.className='btn '+(val==='compliant'?'btn-success':'btn-ghost');btnC.style.flex='1';btnC.style.padding='8px';btnC.style.fontSize='12px';btnC.style.fontWeight='600';}
+  if(btnN){btnN.className='btn '+(val==='not_compliant'?'btn-danger':'btn-ghost');btnN.style.flex='1';btnN.style.padding='8px';btnN.style.fontSize='12px';btnN.style.fontWeight='600';}
+  // Surgically update the card header badge
+  const badge=document.getElementById(`p12-badge-${lid}`);
+  if(badge){
+    if(val==='compliant'){badge.textContent='✓ P12';badge.style.background='#1a7a3c';}
+    else{badge.textContent='✗ P12';badge.style.background='#c53030';}
+    badge.style.color='#fff';
+  }
+  // Update the warning text
+  const warn=document.getElementById(`p12-warn-${lid}`);
+  if(warn)warn.style.display='none';
+}
+
+
 function saveWeanDate(lid){
   const l=getL(lid);if(!l)return;
   const inp=document.getElementById(`wean-date-input-${lid}`);
@@ -1655,10 +1676,9 @@ function saveWeanType(lid,type){
 function setWeanDate(lid,val){
   const l=getL(lid);if(!l)return;
   l.actualWeanDate=val;
-  l.weanDate=val; // keep for backward compat
-  l.estimatedWeanDate=val||l.estimatedWeanDate; // preserve estimated if clearing actual
-  // Archive only on actual wean date
-  l.archived=!!val;
+  l.weanDate=val||l.estimatedWeanDate||''; // fall back to estimated for vaccine calcs
+  if(!val)l.archived=false; // clearing actual date unarchives
+  else l.archived=true;
 
   // When a wean date is set, propagate the litter's last known location
   // to each piglet's individual locationLog (if they don't already have one)
