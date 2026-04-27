@@ -1628,13 +1628,22 @@ function upE(lid,eid,f,v){const l=getL(lid);if(!l)return;const e=l.events.find(x
 function setProp12(lid, val){
   const l=getL(lid);if(!l)return;
   l.prop12=val;save();
-  // Rebuild just this litter's tab panels so buttons update correctly
+  // Preserve which tab is active before rebuilding
+  const tabsEl=document.getElementById(`tabs-${lid}`);
+  const activeBtn=tabsEl?tabsEl.querySelector('.tab-btn.active'):null;
+  const activeTabId=activeBtn?activeBtn.dataset.tab:'info'; // default to info since that's where P12 is
+  // Rebuild tab panels so buttons reflect new state
   rebuildTabs(l);
-  // Also update the card header badge surgically
+  // Re-activate the same tab
+  setTimeout(()=>{
+    const newBtn=document.querySelector(`#tabs-${lid} .tab-btn[data-tab="${activeTabId}"]`);
+    if(newBtn)activateTab(newBtn,lid,activeTabId);
+  },0);
+  // Update the lmeta badge surgically (text color, not background)
   const badge=document.getElementById(`p12-badge-${lid}`);
   if(badge){
-    badge.textContent=val==='compliant'?'● P12':'● P12';
-    badge.style.background=val==='compliant'?'#1a7a3c':'#c53030';
+    badge.textContent=val==='compliant'?'● P12 ✓':'● P12 ✗';
+    badge.style.color=val==='compliant'?'#1a7a3c':'#c53030';
   }
 }
 
