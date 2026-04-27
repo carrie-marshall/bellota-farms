@@ -307,7 +307,7 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
 <div class="app-header">
   <div><h1>Bellota Farms — Litter Records</h1><div class="sub">Ibérico Farrowing &amp; Piglet Tracking · California</div></div>
   <div class="header-acts">
-    <span id="save-indicator" style="font-size:11px;color:var(--green);font-weight:600;opacity:0;transition:opacity .4s;padding:4px 8px">✓ Saved</span>
+    <span id="save-indicator" style="font-size:12px;color:#fff;font-weight:700;opacity:0;transition:opacity .5s;padding:4px 12px;background:var(--green);border-radius:6px">✓ Saved</span>
     <button class="btn btn-ghost btn-sm" onclick="backupData()">⬇ Backup</button>
     <button class="btn btn-ghost btn-sm" onclick="openRestoreModal()">⬆ Restore</button>
     <button class="btn btn-ghost btn-sm" onclick="openExportModal()">Export / Print</button>
@@ -504,8 +504,8 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
     </div>
     <input type="hidden" id="nl-expfarrow">
     <!-- Hut comes from Breeding Tracker hutAssignment, shown read-only -->
-    <div class="fgrp"><label>Move-in to Farrowing Barn</label><input type="date" id="nl-moved-in"></div>
-    <div class="fgrp"><label>Move-out from Farrowing Barn</label><input type="date" id="nl-moved-out"></div>
+    <div class="fgrp"><label>Move-in Date</label><input type="date" id="nl-moved-in"></div>
+    <div class="fgrp"><label>Move-out Date</label><input type="date" id="nl-moved-out"></div>
   </div>
   <div class="stitle">Farrowing Event</div>
   <div class="fg" style="margin-bottom:14px">
@@ -781,7 +781,7 @@ const save=()=>{
   localStorage.setItem('bf_breeders_v2',JSON.stringify(breeders));
   // Flash save indicator
   const ind=document.getElementById('save-indicator');
-  if(ind){clearTimeout(ind._t);ind.style.opacity='1';ind._t=setTimeout(()=>ind.style.opacity='0',1800);}
+  if(ind){clearTimeout(ind._t);ind.style.opacity='1';ind._t=setTimeout(()=>ind.style.opacity='0',2500);}
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -968,8 +968,7 @@ function createLitter(){
   const movedIn=document.getElementById('nl-moved-in').value;
   const movedOut=document.getElementById('nl-moved-out').value;
   const litLocLog=[];
-  if(movedIn)writeLocEntry(litLocLog,movedIn,'Farrowing Barn',stall?`Hut ${stall}`:'');
-  if(movedOut)writeLocEntry(litLocLog,movedOut,'Left Farrowing Barn','');
+  if(movedIn&&stall)writeLocEntry(litLocLog,movedIn,['1','2','3','4','5'].includes(stall)?`Barn — Hut ${stall} — Closed`:stall,'');
   const l={
     id:uid(),sow,
     litterName:document.getElementById('nl-lname').value.trim(),
@@ -1093,9 +1092,9 @@ function buildCard(l){
   c.innerHTML=`
   <div class="card-hdr" onclick="toggle('${l.id}')">
     <div><div class="ltitle">${sowLbl}${stallTag}${breedStr}${farrowStr}</div>
-    <div class="lmeta">${l.boar?'x '+l.boar:''}${dur?' · '+dur:''}${l.parity?' · Parity '+l.parity:''}${wd?' · Weaned '+fmtDate(wd):''}</div></div>
+    <div class="lmeta">${l.boar?'x '+l.boar:''}${dur?' · '+dur:''}${l.parity?' · Parity '+l.parity:''}${wd?' · Weaned '+fmtDate(wd):''} <span id="p12-badge-${l.id}" style="font-size:10px;font-weight:600;color:${l.prop12==='compliant'?'#1a7a3c':l.prop12==='not_compliant'?'#c53030':'var(--orange)'}">${l.prop12==='compliant'?'● P12 ✓':l.prop12==='not_compliant'?'● P12 ✗':'● P12?'}</span></div></div>
     <div class="badges">
-      ${l.prop12==='compliant'?`<span id="p12-badge-${l.id}" class="badge" style="background:#1a7a3c;color:#fff;font-size:10px">✓ P12</span>`:l.prop12==='not_compliant'?`<span id="p12-badge-${l.id}" class="badge" style="background:#c53030;color:#fff;font-size:10px">✗ P12</span>`:`<span id="p12-badge-${l.id}" class="badge" style="background:var(--orange);color:#fff;font-size:10px">P12?</span>`}
+      
       ${l.farrowConfirmed
         ?`<span class="badge bg-blue">${total} born</span><span class="badge bg-gn">${alive} alive</span>${diedPost?'<span class="badge bg-rd">'+diedPost+' died</span>':''}${stillMum?'<span class="badge bg-yw">'+stillMum+' still/mum</span>':''}`
         :'<span class="badge" style="background:var(--orange);color:#fff">Farrowing unconfirmed</span>'}
@@ -1317,7 +1316,7 @@ function rebuildTabs(l){
     <div style="display:grid;grid-template-columns:130px 1fr 1fr auto;gap:8px;align-items:end;margin-bottom:14px">
       <div class="fgrp"><label>Date</label><input type="date" id="litloc-date-${l.id}" value="${new Date().toISOString().split('T')[0]}"></div>
       <div class="fgrp"><label>Location</label>
-        <input type="text" id="litloc-place-${l.id}" placeholder="e.g. Farrowing Barn" list="loc-datalist" autocomplete="off">
+        <input type="text" id="litloc-place-${l.id}" placeholder="e.g. Barn — Hut 1 — Closed" list="loc-datalist" autocomplete="off">
       </div>
       <div class="fgrp"><label>Notes</label><input type="text" id="litloc-notes-${l.id}" placeholder="Optional"></div>
       <div class="fgrp"><label>&nbsp;</label>
@@ -1629,21 +1628,14 @@ function upE(lid,eid,f,v){const l=getL(lid);if(!l)return;const e=l.events.find(x
 function setProp12(lid, val){
   const l=getL(lid);if(!l)return;
   l.prop12=val;save();
-  // Surgically update the buttons in the Litter Info tab
-  const btnC=document.getElementById(`p12-btn-compliant-${lid}`);
-  const btnN=document.getElementById(`p12-btn-not-${lid}`);
-  if(btnC){btnC.className='btn '+(val==='compliant'?'btn-success':'btn-ghost');btnC.style.flex='1';btnC.style.padding='8px';btnC.style.fontSize='12px';btnC.style.fontWeight='600';}
-  if(btnN){btnN.className='btn '+(val==='not_compliant'?'btn-danger':'btn-ghost');btnN.style.flex='1';btnN.style.padding='8px';btnN.style.fontSize='12px';btnN.style.fontWeight='600';}
-  // Surgically update the card header badge
+  // Rebuild just this litter's tab panels so buttons update correctly
+  rebuildTabs(l);
+  // Also update the card header badge surgically
   const badge=document.getElementById(`p12-badge-${lid}`);
   if(badge){
-    if(val==='compliant'){badge.textContent='✓ P12';badge.style.background='#1a7a3c';}
-    else{badge.textContent='✗ P12';badge.style.background='#c53030';}
-    badge.style.color='#fff';
+    badge.textContent=val==='compliant'?'● P12':'● P12';
+    badge.style.background=val==='compliant'?'#1a7a3c':'#c53030';
   }
-  // Update the warning text
-  const warn=document.getElementById(`p12-warn-${lid}`);
-  if(warn)warn.style.display='none';
 }
 
 
@@ -2263,7 +2255,7 @@ function removeLocEntryOnDate(logArr,date){
 }
 
 // Sync breeder move-in/move-out dates to location logs
-// Writes "Farrowing Barn" on move-in, "Left Farrowing Barn" on move-out
+// Writes hut location on move-in (e.g. "Barn — Hut 1 — Closed")
 // Also syncs to the linked litter's locationLog if one exists
 function syncBreederLocations(b, prevMoveIn, prevMoveOut){
   if(!b.locationLog)b.locationLog=[];
@@ -2288,15 +2280,12 @@ function syncBreederLocations(b, prevMoveIn, prevMoveOut){
     removeLocEntryOnDate(b.locationLog,prevMoveOut);
     if(linkedLitter)removeLocEntryOnDate(linkedLitter.locationLog,prevMoveOut);
   }
-  // Write new move-in
-  if(b.actualMoveIn){
-    const hutNote=b.hutAssignment?(['1','2','3','4','5'].includes(b.hutAssignment)?`Barn — Hut ${b.hutAssignment} — Closed`:b.hutAssignment):'';
-    writeLocEntry(targetLog,b.actualMoveIn,'Farrowing Barn',hutNote);
+  // Write new move-in — use hut name directly as the location
+  if(b.actualMoveIn&&b.hutAssignment){
+    const hutLoc=['1','2','3','4','5'].includes(b.hutAssignment)?`Barn — Hut ${b.hutAssignment} — Closed`:b.hutAssignment;
+    writeLocEntry(targetLog,b.actualMoveIn,hutLoc,'');
   }
-  // Write new move-out
-  if(b.actualMoveOut){
-    writeLocEntry(targetLog,b.actualMoveOut,'Left Farrowing Barn','');
-  }
+  // Move-out location is added manually via Location Log
   saveHerd();
 }
 
@@ -2742,8 +2731,7 @@ const HUT_LOCATIONS=['Barn — Hut 1 — Closed','Barn — Hut 1 — Behind Barn
   'Barn — Hut 4 — Closed','Barn — Hut 4 — Behind Barn',
   'Barn — Hut 5 — Closed','Barn — Hut 5 — Behind Barn'];
 let manualBoars=JSON.parse(localStorage.getItem('bf_boars')||'[]');
-// Pre-seed Farrowing Barn as default location
-if(!locationNames.includes('Farrowing Barn'))locationNames.push('Farrowing Barn');
+// Hut locations are auto-included in datalist via HUT_LOCATIONS constant
 
 function saveHerd(){
   localStorage.setItem('bf_locations',JSON.stringify(locationNames));
@@ -3002,9 +2990,12 @@ function renderLocLog(){
     return;
   }
   con.innerHTML=sorted.map(e=>`<div class="loc-entry">
-    <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-mid)">${fmtDate(e.date)}</div>
-    <div style="font-weight:600;font-size:12px">${e.location}</div>
-    <div style="font-size:11px;color:var(--text-light)">${e.notes||''}</div>
+    <input type="date" value="${e.date}" style="font-size:11px;padding:2px 4px;font-family:'DM Mono',monospace;border:1px solid var(--border);border-radius:4px"
+      onchange="editLocEntry('${e.id}','date',this.value)">
+    <input type="text" value="${e.location}" list="loc-datalist" style="font-size:12px;font-weight:600;padding:2px 6px;border:1px solid var(--border);border-radius:4px"
+      onchange="editLocEntry('${e.id}','location',this.value)">
+    <input type="text" value="${e.notes||''}" placeholder="Notes…" style="font-size:11px;color:var(--text-light);padding:2px 6px;border:1px solid var(--border);border-radius:4px"
+      onchange="editLocEntry('${e.id}','notes',this.value)">
     <button class="btn btn-sm btn-danger" style="padding:2px 7px" onclick="deleteLocEntry('${e.id}')">✕</button>
   </div>`).join('');
 }
@@ -3029,6 +3020,16 @@ function addLocEntry(){
   document.getElementById('loc-new-notes').value='';
   toast(`Location recorded: ${location} on ${fmtDate(date)}`);
 }
+
+function editLocEntry(entryId, field, val){
+  if(!_locEnt)return;
+  const entry=(_locEnt.ref.locationLog||[]).find(e=>e.id===entryId);
+  if(!entry)return;
+  entry[field]=val;
+  if(field==='location')addLocationName(val);
+  saveHerd();renderHerd();
+}
+
 
 function deleteLocEntry(entryId){
   if(!_locEnt)return;
@@ -3288,7 +3289,7 @@ function buildTaskList(){
 
     // Clean hut on move-out date — check both old movedOut field and location log
     const legacyMoveOut=l.movedOut||'';
-    const locLogMoveOut=(l.locationLog||[]).find(e=>e.location==='Left Farrowing Barn');
+    const locLogMoveOut=null; // deprecated — no longer tracking 'Left Farrowing Barn' separately
     const moveOut=locLogMoveOut?locLogMoveOut.date:legacyMoveOut;
     if(moveOut){
       const id=tuid(`lit-${l.id}`,'clean',moveOut);
@@ -3312,7 +3313,8 @@ function buildTaskList(){
         if(moveIn){
           const id=tuid(`br-${br.id}`,'movein',moveIn);
           tasks.push({id,type:'move',animal:sowLabel,
-            name:`Move to Farrowing Barn${br.hutAssignment?' — Hut '+br.hutAssignment:''}`,
+            name:`Move to Hut${br.hutAssignment?' — '+(['1','2','3','4','5'].includes(br.hutAssignment)?'Barn Hut '+br.hutAssignment:br.hutAssignment):''}`,
+
             due:moveIn,note:`5 days before expected farrow window`,
             filter:'move'});
         }
