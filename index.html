@@ -857,8 +857,8 @@ function litTallies(l){
   const stillMum=l.piglets.filter(p=>p.status==='stillborn'||p.status==='mummified').length;
   return{total,bornAlive:total-stillMum,stillMum,diedPost:l.piglets.filter(p=>p.status==='dead').length,alive:l.piglets.filter(p=>p.status==='alive').length};
 }
-const getWeanDate=l=>l.actualWeanDate||l.estimatedWeanDate||l.weanDate||'';
-const isActuallyWeaned=l=>!!(l.actualWeanDate||(l.weanDate&&!l.estimatedWeanDate));
+const getWeanDate=l=>l.actualWeanDate||l.estimatedWeanDate||'';
+const isActuallyWeaned=l=>!!(l.actualWeanDate);
 
 // Date diff in days (b - a)
 function dateDiff(a,b){
@@ -923,7 +923,7 @@ function nlAutoExp(){
     if(nd)nd.value=exp;
   }
 }
-const NL_FIELDS=['nl-sow','nl-lname','nl-prop12','nl-tag','nl-boar','nl-parity','nl-swt','nl-gest','nl-breed','nl-stall','nl-moved-in','nl-moved-out','nl-tf','nl-tl','nl-intv','nl-notes'];
+const NL_FIELDS=['nl-sow','nl-lname','nl-prop12','nl-tag','nl-boar','nl-parity','nl-swt','nl-gest','nl-breed','nl-moved-in','nl-moved-out','nl-tf','nl-tl','nl-intv','nl-notes'];
 function openNLModal(prefill){
   document.getElementById('nl-date').value='';
   const ft=document.getElementById('nl-farrow-type');if(ft)ft.value='estimated';
@@ -935,7 +935,7 @@ function openNLModal(prefill){
     if(prefill.parity)document.getElementById('nl-parity').value=prefill.parity;
     if(prefill.boar)document.getElementById('nl-boar').value=prefill.boar;
     if(prefill.breedDate){document.getElementById('nl-breed').value=prefill.breedDate;nlAutoExp();}
-    if(prefill.hut)document.getElementById('nl-stall').value=prefill.hut;
+    const stallFld=document.getElementById('nl-stall');if(stallFld&&prefill.hut)stallFld.value=prefill.hut;
     if(prefill.moveIn)document.getElementById('nl-moved-in').value=prefill.moveIn;
   }
   openModal('nl-modal');
@@ -964,7 +964,7 @@ function createLitter(){
       return;
     }
   }
-  const stall=document.getElementById('nl-stall').value.trim();
+  const stallEl=document.getElementById('nl-stall');const stall=stallEl?stallEl.value.trim():'';
   const movedIn=document.getElementById('nl-moved-in').value;
   const movedOut=document.getElementById('nl-moved-out').value;
   const litLocLog=[];
@@ -991,11 +991,7 @@ function createLitter(){
     weanDate:'',estimatedWeanDate:'',actualWeanDate:'',
     locationLog:litLocLog,
     weightCheckpoints:[
-      {id:uid(),label:'Day 1',  days:1, isWean:false},
-      {id:uid(),label:'Day 3',  days:3, isWean:false},
-      {id:uid(),label:'Day 7',  days:7, isWean:false},
-      {id:uid(),label:'Day 21', days:21,isWean:false},
-      {id:'wean-cp',label:'Weaning',days:60,isWean:true},
+      {id:uid(),label:'',targetDate:'',isWean:false},
     ],
     piglets:Array.from({length:cnt},(_,i)=>({
       id:uid(),num:i+1,status:'alive',sex:'',color:'',earNotch:'',
@@ -1252,11 +1248,11 @@ function rebuildTabs(l){
       </div>
       <div class="fgrp" style="grid-column:1/-1"><label>Prop 12 Status <span style="color:var(--red)">*</span></label>
         <div style="display:flex;gap:8px;margin-top:4px">
-          <button id="p12-btn-compliant-${l.id}" class="btn ${l.prop12==='compliant'?'btn-success':'btn-ghost'}" style="flex:1;padding:8px;font-size:12px;font-weight:600"
+          <button id="p12-btn-compliant-${l.id}" class="btn ${l.prop12==='compliant'?'btn-success':'btn-muted'}" style="flex:1;padding:8px;font-size:12px;font-weight:600"
             onclick="setProp12('${l.id}','compliant')">
             ✓ Prop 12 Compliant
           </button>
-          <button id="p12-btn-not-${l.id}" class="btn ${l.prop12==='not_compliant'?'btn-danger':'btn-ghost'}" style="flex:1;padding:8px;font-size:12px;font-weight:600"
+          <button id="p12-btn-not-${l.id}" class="btn ${l.prop12==='not_compliant'?'btn-danger':'btn-muted'}" style="flex:1;padding:8px;font-size:12px;font-weight:600"
             onclick="setProp12('${l.id}','not_compliant')">
             ✗ Not Prop 12 Compliant
           </button>
@@ -1628,23 +1624,26 @@ function upE(lid,eid,f,v){const l=getL(lid);if(!l)return;const e=l.events.find(x
 function setProp12(lid, val){
   const l=getL(lid);if(!l)return;
   l.prop12=val;save();
-  // Preserve which tab is active before rebuilding
-  const tabsEl=document.getElementById(`tabs-${lid}`);
-  const activeBtn=tabsEl?tabsEl.querySelector('.tab-btn.active'):null;
-  const activeTabId=activeBtn?activeBtn.dataset.tab:'info'; // default to info since that's where P12 is
-  // Rebuild tab panels so buttons reflect new state
-  rebuildTabs(l);
-  // Re-activate the same tab
-  setTimeout(()=>{
-    const newBtn=document.querySelector(`#tabs-${lid} .tab-btn[data-tab="${activeTabId}"]`);
-    if(newBtn)activateTab(newBtn,lid,activeTabId);
-  },0);
-  // Update the lmeta badge surgically (text color, not background)
+  // Update button styles directly — no tab rebuild needed
+  const btnC=document.getElementById(`p12-btn-compliant-${lid}`);
+  const btnN=document.getElementById(`p12-btn-not-${lid}`);
+  if(btnC){
+    btnC.className=(val==='compliant'?'btn btn-success':'btn btn-muted');
+    Object.assign(btnC.style,{flex:'1',padding:'8px',fontSize:'12px',fontWeight:'600'});
+  }
+  if(btnN){
+    btnN.className=(val==='not_compliant'?'btn btn-danger':'btn btn-muted');
+    Object.assign(btnN.style,{flex:'1',padding:'8px',fontSize:'12px',fontWeight:'600'});
+  }
+  // Update lmeta badge
   const badge=document.getElementById(`p12-badge-${lid}`);
   if(badge){
     badge.textContent=val==='compliant'?'● P12 ✓':'● P12 ✗';
     badge.style.color=val==='compliant'?'#1a7a3c':'#c53030';
   }
+  // Hide warning
+  const warn=document.getElementById(`p12-warn-${lid}`);
+  if(warn)warn.style.display='none';
 }
 
 
@@ -1661,7 +1660,7 @@ function saveWeanDate(lid){
     const l2=getL(lid);if(!l2)return;
     l2.estimatedWeanDate=val;
     l2.actualWeanDate='';
-    l2.weanDate=val; // keep for backward compat
+    l2.weanDate=''; // must be empty so isActuallyWeaned stays false
     l2.archived=false; // estimated does NOT archive
     save();
     const vaxWd=document.getElementById(`vax-wd-${lid}`);if(vaxWd)vaxWd.textContent=fmtDate(val)+' (est.)';
@@ -1677,7 +1676,7 @@ function saveWeanType(lid,type){
 function setWeanDate(lid,val){
   const l=getL(lid);if(!l)return;
   l.actualWeanDate=val;
-  l.weanDate=val||l.estimatedWeanDate||''; // fall back to estimated for vaccine calcs
+  l.weanDate=''; // always empty — vaccine calcs use getWeanDate() which reads actualWeanDate||estimatedWeanDate
   if(!val)l.archived=false; // clearing actual date unarchives
   else l.archived=true;
 
@@ -4244,11 +4243,16 @@ function confirmRestore(){
 breeders.forEach(b=>{if(typeof b.hutAssignment==='number')b.hutAssignment=String(b.hutAssignment);});
 if(breeders.some(b=>typeof b.hutAssignment==='number'===false&&b.hutAssignment!==null))save();
 
-// Migrate existing wean dates: treat old weanDate as actualWeanDate
+// Migrate existing wean dates: treat old weanDate as actualWeanDate (one-time only)
+// After migration, clear weanDate so it can't re-trigger isActuallyWeaned on future loads
+let migrationDirty=false;
 litters.forEach(l=>{
-  if(l.weanDate&&!l.actualWeanDate)l.actualWeanDate=l.weanDate;
-  if(l.weanDate&&!l.archived)l.archived=true;
+  if(l.weanDate&&!l.actualWeanDate){l.actualWeanDate=l.weanDate;migrationDirty=true;}
+  if(l.actualWeanDate&&!l.archived){l.archived=true;migrationDirty=true;}
+  // Clear weanDate so startup migration never runs again for this litter
+  if(l.weanDate){l.weanDate='';migrationDirty=true;}
 });
+if(migrationDirty)save();
 // Auto-confirm farrowing for existing litters that have piglets entered
 litters.forEach(l=>{if((l.piglets&&l.piglets.length>0||l.farrowIsActual)&&l.farrowConfirmed===undefined)l.farrowConfirmed=true;});
 // Migrate checkpoints from days-based to date-based
