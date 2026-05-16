@@ -511,8 +511,7 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
   <div class="fg" style="margin-bottom:14px">
     <div class="fgrp"><label>First Piglet Time</label><input type="time" id="nl-tf"></div>
     <div class="fgrp"><label>Last Piglet Time</label><input type="time" id="nl-tl"></div>
-    <div class="fgrp fg-full"><label>Human Interventions</label><textarea id="nl-intv" placeholder="e.g. Oxytocin 2ml at 14:30…"></textarea></div>
-    <div class="fgrp fg-full"><label>Farrowing Notes</label><textarea id="nl-notes" placeholder="General observations…"></textarea></div>
+    <div class="fgrp fg-full"><label>Notes</label><textarea id="nl-notes" placeholder="Observations, interventions, anything relevant…"></textarea></div>
   </div>
   <div class="stitle">Piglets</div>
   <div class="fg"><div class="fgrp"><label>Number of piglets to enter</label><input type="number" id="nl-cnt" min="1" max="20" value="6"></div></div>
@@ -923,7 +922,7 @@ function nlAutoExp(){
     if(nd)nd.value=exp;
   }
 }
-const NL_FIELDS=['nl-sow','nl-lname','nl-prop12','nl-tag','nl-boar','nl-parity','nl-swt','nl-gest','nl-breed','nl-moved-in','nl-moved-out','nl-tf','nl-tl','nl-intv','nl-notes'];
+const NL_FIELDS=['nl-sow','nl-lname','nl-prop12','nl-tag','nl-boar','nl-parity','nl-swt','nl-gest','nl-breed','nl-moved-in','nl-moved-out','nl-tf','nl-tl','nl-notes'];
 function openNLModal(prefill){
   document.getElementById('nl-date').value='';
   const ft=document.getElementById('nl-farrow-type');if(ft)ft.value='estimated';
@@ -986,7 +985,6 @@ function createLitter(){
     stall,movedIn,movedOut,
     timeFirst:document.getElementById('nl-tf').value,
     timeLast:document.getElementById('nl-tl').value,
-    interventions:document.getElementById('nl-intv').value.trim(),
     notes:document.getElementById('nl-notes').value.trim(),
     weanDate:'',estimatedWeanDate:'',actualWeanDate:'',
     locationLog:litLocLog,
@@ -1329,7 +1327,7 @@ function rebuildTabs(l){
     </div>
     <div class="stitle">Piglet List (from Birth tab)</div>
     <div class="tw" style="margin-bottom:14px"><table><thead><tr>
-      <th>#</th><th>Status</th><th>Sex</th><th>Ear Notch</th><th>Color</th><th>Birth Wt</th><th>Nipples</th><th>Designation</th><th>Notes</th>
+      <th>#</th><th>Status</th><th>Sex</th><th>Ear Notch</th><th>Color</th><th>Birth Wt</th><th>Nipples</th><th>Castration</th><th>Designation</th><th>Notes</th><th></th>
     </tr></thead><tbody>${l.piglets.map(p=>`<tr>
       <td class="pnum">${p.num}</td>
       <td><span class="badge ${p.status==='alive'?'bg-gn':p.status==='dead'?'bg-rd':'bg-yw'}" style="font-size:10px">${p.status}</span></td>
@@ -1343,8 +1341,7 @@ function rebuildTabs(l){
     </tr>`).join('')}</tbody></table></div>
     <div class="stitle">Notes</div>
     <div class="fg" style="margin-bottom:14px">
-      <div class="fgrp fg-full"><label>Human Interventions</label><textarea onchange="upL('${l.id}','interventions',this.value)">${l.interventions||''}</textarea></div>
-      <div class="fgrp fg-full"><label>Farrowing Notes</label><textarea onchange="upL('${l.id}','notes',this.value)">${l.notes||''}</textarea></div>
+      <div class="fgrp fg-full"><label>Notes</label><textarea onchange="upL('${l.id}','notes',this.value)">${(l.interventions?l.interventions+(l.notes?'\n'+l.notes:''):l.notes)||''}</textarea></div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--border)">
       <button class="btn btn-sm btn-muted" onclick="openExportModal('${l.id}')">Export CSV</button>
@@ -1381,36 +1378,33 @@ function renderBirthRows(l){
         <option value="mummified" ${p.status==='mummified'?'selected':''}>Mummified</option>
       </select></td>
       <td><select onchange="upP('${l.id}','${p.id}','sex',this.value);renderBirthRows(getL('${l.id}'))">${sexOpts}</select></td>
-      <td><input type="time" value="${p.timeBorn||''}" onchange="upP('${l.id}','${p.id}','timeBorn',this.value)"></td>
+      <td><input type="text" value="${p.earNotch||''}" placeholder="1L" style="width:58px" onchange="upP('${l.id}','${p.id}','earNotch',this.value)"></td>
+      <td><input type="text" value="${p.color||''}" placeholder="colour…" style="width:80px" onchange="upP('${l.id}','${p.id}','color',this.value)"></td>
       <td>
         ${p.birthWeightNA
-          ?`<div style="display:flex;align-items:center;gap:6px">
-              <span style="font-family:'DM Mono',monospace;color:var(--text-light);font-style:italic;font-size:11px">N/A</span>
-              <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:1px 6px" onclick="toggleBirthWeightNA('${l.id}','${p.id}',false)">Enter weight</button>
+          ?`<div style="display:flex;align-items:center;gap:4px">
+              <span style="font-size:11px;color:var(--text-light);font-style:italic">N/A</span>
+              <button class="btn btn-muted btn-sm" style="font-size:10px;padding:1px 5px" onclick="toggleBirthWeightNA('${l.id}','${p.id}',false)">Enter</button>
             </div>`
           :`<div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap">
               <input type="number" min="0" max="99" step="1" value="${splitLbOz(p.birthOz).lb||''}" placeholder="lb"
-                style="width:44px;padding:3px 4px;font-size:12px;text-align:center"
+                style="width:40px;padding:3px 4px;font-size:11px;text-align:center"
                 onchange="upBirthLbOz('${l.id}','${p.id}',this.value,this.nextElementSibling.nextElementSibling.value)">
               <span style="font-size:10px">lb</span>
               <input type="number" min="0" max="15.9" step="0.1" value="${splitLbOz(p.birthOz).oz||''}" placeholder="oz"
-                style="width:48px;padding:3px 4px;font-size:12px;text-align:center"
+                style="width:44px;padding:3px 4px;font-size:11px;text-align:center"
                 onchange="upBirthLbOz('${l.id}','${p.id}',this.previousElementSibling.previousElementSibling.value,this.value)">
               <span style="font-size:10px">oz</span>
-              <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:1px 6px;color:var(--text-light)" onclick="toggleBirthWeightNA('${l.id}','${p.id}',true)" title="Mark as not weighed at birth">N/A</button>
-            </div>
-            <div style="font-size:10px;color:var(--text-light);font-family:'DM Mono',monospace;margin-top:2px">${p.birthOz?fmtOz(p.birthOz):''}</div>`}
+              <button class="btn btn-muted btn-sm" style="font-size:10px;padding:1px 4px" onclick="toggleBirthWeightNA('${l.id}','${p.id}',true)">N/A</button>
+            </div>`}
       </td>
-      <td><input type="text" value="${p.color||''}" placeholder="black, red mark…" onchange="upP('${l.id}','${p.id}','color',this.value)"></td>
-      <td><input type="text" value="${p.earNotch||''}" placeholder="1L" style="width:58px" onchange="upP('${l.id}','${p.id}','earNotch',this.value)"></td>
       <td><input type="number" value="${p.nippleCount||''}" min="0" max="20" style="width:44px" onchange="upP('${l.id}','${p.id}','nippleCount',this.value)"></td>
       <td>${castCell}</td>
-      <td><input type="text" value="${p.notes||''}" placeholder="notes…" onchange="upP('${l.id}','${p.id}','notes',this.value)"></td>
-      <td>${isDeceased?'<span style="font-size:10px;color:var(--text-light);font-style:italic">N/A</span>':
+      <td>${isDeceased?'<span style="font-size:10px;color:var(--text-light)">—</span>':
         `<select style="width:110px;font-size:11px" onchange="upDesig('${l.id}','${p.id}',this.value)">${DESIG_OPTS.map(d=>`<option value="${d}" ${(p.designation||'undecided')===d?'selected':''}>${d}</option>`).join('')}</select>`
       }</td>
-      <td>${isDeceased?'<span style="font-size:10px;color:var(--text-light);font-style:italic">N/A</span>':''}
-      <button class="btn btn-sm btn-danger" style="padding:3px 7px" onclick="remP('${l.id}','${p.id}')">✕</button></td>`;
+      <td><input type="text" value="${p.notes||''}" placeholder="notes…" onchange="upP('${l.id}','${p.id}','notes',this.value)"></td>
+      <td><button class="btn btn-sm btn-danger" style="padding:3px 7px" onclick="remP('${l.id}','${p.id}')">✕</button></td>`;
     tb.appendChild(tr);
   });
 }
@@ -1503,7 +1497,9 @@ function renderPigVax(l){
   const wd=getWeanDate(l);tb.innerHTML='';
   l.pigVax.forEach((vax,idx)=>{
     let exp='';if(vax.anchor==='birth'&&getLitterFarrow(l))exp=addDays(getLitterFarrow(l),vax.offsetDays);else if(vax.anchor==='wean'&&wd)exp=addDays(wd,vax.offsetDays);
-    const tr=document.createElement('tr');if(vax.done)tr.classList.add('vdone');
+    const tr=document.createElement('tr');
+    if(vax.done)tr.classList.add('vdone');
+    if(!vax.done&&l.pigVaxComplete){tr.style.opacity='0.35';tr.style.pointerEvents='none';}
     tr.innerHTML=`<td style="text-align:center"><input type="checkbox" ${vax.done?'checked':''} onchange="upPV('${l.id}',${idx},'done',this.checked);renderPigVax(getL('${l.id}'))"></td><td class="vname" style="font-weight:500;white-space:nowrap">${vax.label}</td><td style="font-family:'DM Mono',monospace;font-size:11px">${vax.dose}</td><td style="font-family:'DM Mono',monospace;font-size:11px">${exp?fmtDate(exp):`<span style="color:var(--text-light)">Set ${vax.anchor==='wean'?'wean date':'farrow date'}</span>`}</td><td><input type="date" value="${vax.actualDate||''}" onchange="upPV('${l.id}',${idx},'actualDate',this.value)"></td><td><input type="text" value="${vax.actualNotes||''}" placeholder="${vax.note}" onchange="upPV('${l.id}',${idx},'actualNotes',this.value)"></td>`;
     tb.appendChild(tr);
   });
@@ -1514,7 +1510,10 @@ function renderSowVax(l){
   tb.innerHTML='';
   l.sowVax.forEach((vax,idx)=>{
     let exp='';if(vax.anchor==='breed'&&l.breedDate)exp=addDays(l.breedDate,vax.offsetDays);else if(vax.anchor==='farrow'&&getLitterFarrow(l))exp=addDays(getLitterFarrow(l),vax.offsetDays);
-    const tr=document.createElement('tr');if(vax.done)tr.classList.add('vdone');if(vax.supp)tr.style.background='rgba(245,160,35,.05)';
+    const tr=document.createElement('tr');
+    if(vax.done)tr.classList.add('vdone');
+    if(!vax.done&&l.sowVaxComplete){tr.style.opacity='0.35';tr.style.pointerEvents='none';}
+    if(vax.supp&&!l.sowVaxComplete)tr.style.background='rgba(245,160,35,.05)';
     tr.innerHTML=`<td style="text-align:center"><input type="checkbox" ${vax.done?'checked':''} onchange="upSV('${l.id}',${idx},'done',this.checked);renderSowVax(getL('${l.id}'))"></td><td class="vname" style="font-weight:500;white-space:nowrap">${vax.supp?'[SUPP] ':''}${vax.label}</td><td style="font-family:'DM Mono',monospace;font-size:11px">${vax.dose}</td><td style="font-size:11px;color:${vax.giltsOnly?'var(--orange)':'var(--text-mid)'}">${vax.giltsOnly?'★ First parity gilts':'All females'}</td><td style="font-family:'DM Mono',monospace;font-size:11px">${exp?fmtDate(exp):`<span style="color:var(--text-light)">Set ${vax.anchor} date in Litter Info</span>`}</td><td><input type="date" value="${vax.actualDate||''}" onchange="upSV('${l.id}',${idx},'actualDate',this.value)"></td><td><input type="text" value="${vax.actualNotes||''}" placeholder="${vax.note}" onchange="upSV('${l.id}',${idx},'actualNotes',this.value)"></td>`;
     tb.appendChild(tr);
   });
@@ -1787,8 +1786,7 @@ function flushBirthRows(lid){
     const row=tb.rows[i];if(!row)return;
     row.querySelectorAll('input,select').forEach(inp=>{
       const oc=inp.getAttribute('onchange')||'';
-      if(oc.includes("'timeBorn'"))p.timeBorn=inp.value;
-      else if(oc.includes("'birthOz'"))p.birthOz=inp.value;
+      if(oc.includes("'birthOz'"))p.birthOz=inp.value;
       else if(oc.includes("'color'"))p.color=inp.value;
       else if(oc.includes("'earNotch'"))p.earNotch=inp.value;
       else if(oc.includes("'nippleCount'"))p.nippleCount=inp.value;
@@ -3246,18 +3244,6 @@ function buildTaskList(){
         litter:l.sow,filter:'vaccine'});
     });
 
-    // Weight checkpoints
-    (l.weightCheckpoints||[]).forEach(cp=>{
-      if(!farrow)return;
-      const due=addDays(farrow,cp.days);
-      const id=tuid(`lit-${l.id}`,`wt-${cp.id}`,due);
-      const allWeighed=l.piglets.filter(p=>p.status==='alive').every(p=>(p.weights||{})[cp.id]);
-      if(allWeighed)return;
-      tasks.push({id,type:'weight',animal:sowLabel+' litter',
-        name:`Weigh piglets — ${cp.label}${cp.isWean?' (Weaning)':''}`,due,
-        note:`Day ${cp.days} post-birth`,litter:l.sow,filter:'weight'});
-    });
-
     // Wean litter
     if(wd&&wd>=today){
       const id=tuid(`lit-${l.id}`,'wean',wd);
@@ -3295,17 +3281,6 @@ function buildTaskList(){
       });
     }
 
-    // Clean hut on move-out date — check both old movedOut field and location log
-    const legacyMoveOut=l.movedOut||'';
-    const locLogMoveOut=null; // deprecated — no longer tracking 'Left Farrowing Barn' separately
-    const moveOut=locLogMoveOut?locLogMoveOut.date:legacyMoveOut;
-    if(moveOut){
-      const id=tuid(`lit-${l.id}`,'clean',moveOut);
-      tasks.push({id,type:'clean',animal:`${l.stall||'Farrowing hut'} — after ${l.sow}`,
-        name:`Clean farrowing hut${l.stall?' ('+l.stall+')':''}`,due:moveOut,
-        note:'Disinfect, dry, and prepare for next sow',
-        litter:l.sow,filter:'move'});
-    }
   });
 
   // ── BREEDING TRACKER TASKS ─────────────────────────────────────────────────
@@ -3326,14 +3301,7 @@ function buildTaskList(){
             due:moveIn,note:`5 days before expected farrow window`,
             filter:'move'});
         }
-        // Clean hut on move-out
-        const moveOut=occ.release;
-        if(moveOut){
-          const id=tuid(`br-${br.id}`,'moveout-clean',moveOut);
-          tasks.push({id,type:'clean',animal:`Hut${br.hutAssignment?' '+br.hutAssignment:''} — after ${br.sow}`,
-            name:`Clean farrowing hut${br.hutAssignment?' '+br.hutAssignment:''}`,
-            due:moveOut,note:'Disinfect and prepare for next sow',filter:'move'});
-        }
+
       }
     }
 
@@ -3352,17 +3320,7 @@ function buildTaskList(){
         filter:'breeding'});
     }
 
-    // Sow condition check at move-out
-    if(br.confirmed&&bd){
-      const occ=getHutOccupancy(br);
-      if(occ&&occ.release){
-        const id=tuid(`br-${br.id}`,'sow-condition',occ.release);
-        tasks.push({id,type:'health',animal:sowLabel,
-          name:'Sow condition score at move-out',
-          due:occ.release,note:'Record body condition, weight if possible',
-          filter:'health'});
-      }
-    }
+
   });
 
   // Sort: overdue first, then by date
