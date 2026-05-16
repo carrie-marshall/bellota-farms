@@ -274,8 +274,8 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
 .cohort-check-item:hover{background:var(--blue-pale);}
 
 /* ── TASK LIST ────────────────────────────────────────────────────────────── */
-.task-col-hdr{display:grid;grid-template-columns:28px 90px 1fr 160px 200px;gap:10px;padding:8px 14px;background:var(--blue-dark);color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-radius:var(--radius) var(--radius) 0 0;}
-.task-row{display:grid;grid-template-columns:28px 100px 1fr 180px 110px 110px;gap:10px;align-items:start;padding:9px 14px;border-bottom:1px solid var(--border);font-size:12px;background:var(--paper);}
+.task-col-hdr{display:grid;grid-template-columns:28px 80px 1fr 150px 240px;gap:8px;padding:8px 14px;background:var(--blue-dark);color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-radius:var(--radius) var(--radius) 0 0;}
+.task-row{display:grid;grid-template-columns:28px 80px 1fr 150px 240px;gap:8px;align-items:start;padding:9px 14px;border-bottom:1px solid var(--border);font-size:12px;background:var(--paper);}
 .task-row:nth-child(even){background:var(--gray-bg);}
 .task-row.completed{opacity:.45;text-decoration:line-through;}
 .task-row.overdue{background:#fff5f5;}
@@ -321,7 +321,6 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
     <button class="top-nav-btn" onclick="showView('herd',this)">Herd &amp; Locations</button>
     <button class="top-nav-btn" onclick="showView('tasks',this)">Task List</button>
     <button class="top-nav-btn" onclick="showView('summary',this)">Season Summary</button>
-    <button class="top-nav-btn" onclick="showView('estimator',this)">Estimator</button>
   </div>
   <div class="view" id="view-litters">
     <div class="estate" id="es" style="display:none"><div style="font-size:48px">🌰</div>
@@ -427,6 +426,7 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
         </select>
         <button class="btn btn-sm btn-muted" onclick="exportTasksCSV()">Export CSV</button>
         <button class="btn btn-sm btn-muted" onclick="renderTasks()">Refresh</button>
+        <button class="btn btn-primary btn-sm" onclick="openModal('manual-task-modal')">+ Add To-Do</button>
       </div>
     </div>
     <div id="task-summary-bar" style="margin-bottom:12px"></div>
@@ -436,25 +436,6 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
   <!-- SALES & AVAILABILITY VIEW -->
   <!-- SEASON SUMMARY & SALES VIEW -->
   <!-- ESTIMATOR VIEW -->
-  <div class="view" id="view-estimator">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:8px">
-      <div>
-        <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:600;color:var(--blue-dark)">Estimator</div>
-        <div style="font-size:12px;color:var(--text-mid);margin-top:2px">Planning scratchpad only · Does not affect any actual records</div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-sm btn-muted" onclick="clearEstimator()">Clear All</button>
-        <button class="btn btn-sm btn-muted" onclick="estAddBatch()">+ Add Batch (6)</button>
-        <button class="btn btn-primary" onclick="estAddOne()">+ Add Piglet</button>
-      </div>
-    </div>
-    <div style="font-size:11px;color:var(--orange);background:var(--orange-pale);border:1px solid var(--orange-light);border-radius:6px;padding:7px 12px;margin-bottom:16px">
-      ⚠ Estimator data is never saved to litter records or breeding tracker.
-    </div>
-    <div id="est-summary" style="margin-bottom:20px"></div>
-    <div id="est-table"></div>
-  </div>
-
   <div class="view" id="view-summary">
     <!-- ── SEASON PRODUCTION SUMMARY ── -->
     <div class="summary-hdr"><h2>Season Summary &amp; Sales</h2><p>Production summary by farrowing season · Live sales inventory · Customer availability at a glance</p></div>
@@ -518,6 +499,21 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
   <div class="mfooter">
     <button class="btn btn-muted btn-sm" onclick="cancelNLModal()">Cancel</button>
     <button class="btn btn-primary" onclick="createLitter()">Create Litter Record →</button>
+  </div>
+</div></div>
+
+<!-- MANUAL TASK MODAL -->
+<div class="modal-ov" id="manual-task-modal"><div class="modal" style="max-width:440px">
+  <h2>Add To-Do</h2>
+  <div class="fg">
+    <div class="fgrp fg-full"><label>Task Name *</label><input type="text" id="mt-name" placeholder="e.g. Check waterer in hut 3"></div>
+    <div class="fgrp"><label>Due Date *</label><input type="date" id="mt-due"></div>
+    <div class="fgrp"><label>Animal / Context</label><input type="text" id="mt-animal" placeholder="e.g. La Madre, or leave blank"></div>
+    <div class="fgrp fg-full"><label>Note</label><input type="text" id="mt-note" placeholder="Optional details…"></div>
+  </div>
+  <div class="mfooter">
+    <button class="btn btn-muted btn-sm" onclick="closeModal('manual-task-modal')">Cancel</button>
+    <button class="btn btn-primary" onclick="saveManualTask()">Add To-Do</button>
   </div>
 </div></div>
 
@@ -900,7 +896,6 @@ function showView(id,btn){
   if(id==='breeding'){renderGantt();renderHutTable();renderBreeders();}
   if(id==='herd')renderHerd();
   if(id==='tasks')renderTasks();
-  if(id==='estimator')renderEstimator();
 }
 
 function toggleGettingStarted(){
@@ -1990,8 +1985,35 @@ function renderBreeders(){
     con.innerHTML='<div class="estate"><div style="font-size:48px">🐷</div><h3>No females tracked yet</h3><p>Tap <strong>+ Add Female</strong> to start tracking breeding.</p></div>';
     return;
   }
+
+  // Group by proximity to farrow date
+  function farrowDaysAway(b){
+    const l=b.litterId?getL(b.litterId):null;
+    const fd=l?getLitterFarrow(l):(()=>{const bd=calcBreedDate(b);return bd?addDays(bd,FARROW_OFFSET+1):null;})();
+    if(!fd)return null;
+    return Math.round((new Date(fd+'T00:00:00')-new Date(today+'T00:00:00'))/(86400000));
+  }
+  const nursery=sorted.filter(b=>{const d=farrowDaysAway(b);return d!==null&&(Math.abs(d)<=5||(d<-5&&d>=-21));});
+  const postFarrow=sorted.filter(b=>{const d=farrowDaysAway(b);const l=b.litterId?getL(b.litterId):null;return d!==null&&d<-21&&l&&!isActuallyWeaned(l);});
+  const monitoring=sorted.filter(b=>!nursery.includes(b)&&!postFarrow.includes(b));
+  const groups=[
+    {label:'🔴 Active / Nursery',sub:'Within 5 days of farrowing · or farrowed in past 3 weeks',list:nursery,color:'#c53030'},
+    {label:'🟡 Post-Farrow',sub:'Farrowed more than 3 weeks ago · up until weaning',list:postFarrow,color:'#b36200'},
+    {label:'🟢 Monitoring',sub:'Confirmed bred with farrow date >5 days away · or unconfirmed',list:monitoring,color:'#1a7a3c'},
+  ].filter(g=>g.list.length);
+
   con.innerHTML='';
-  sorted.forEach((b,colorIdx)=>{
+  groups.forEach(group=>{
+    // Group header
+    const ghdr=document.createElement('div');
+    ghdr.style.cssText=`margin:16px 0 6px;padding:8px 14px;background:${group.color}15;border-left:4px solid ${group.color};border-radius:4px;cursor:pointer`;
+    ghdr.innerHTML=`<div style="font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:${group.color}">${group.label} <span style="font-size:12px;font-weight:400;color:var(--text-mid)">(${group.list.length})</span></div><div style="font-size:11px;color:var(--text-light);margin-top:2px">${group.sub}</div>`;
+    const groupBody=document.createElement('div');
+    ghdr.addEventListener('click',()=>groupBody.style.display=groupBody.style.display==='none'?'':'none');
+    con.appendChild(ghdr);
+    con.appendChild(groupBody);
+
+    group.list.forEach((b,colorIdx)=>{
     const breedDate=calcBreedDate(b);
     const fa=finalAttempt(b);
     const farrowStart=breedDate?addDays(breedDate,FARROW_OFFSET):'';
@@ -2129,8 +2151,9 @@ function renderBreeders(){
       <span style="font-size:10px;color:var(--text-light)">● done ○ pending ● overdue</span>
     </div>`:''}
     ${b.hutAssignment&&b.confirmed&&breedDate&&hutConflict(b)?`<div class="conflict-banner">⚠ ${b.hutAssignment} conflict — another sow overlaps this period. Please reassign.</div>`:''}`;
-    con.appendChild(card);
-  });
+    groupBody.appendChild(card);
+    });  // end group.list.forEach
+  }); // end groups.forEach
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -3195,6 +3218,7 @@ let _taskState=JSON.parse(localStorage.getItem('bf_tasks')||'{}');
 function saveTaskState(){localStorage.setItem('bf_tasks',JSON.stringify(_taskState));}
 
 const TASK_TYPES={
+  manual:{label:'To-Do',cls:'bg-lt',color:'#666'},
   vaccine:   {label:'Vaccine',     cls:'bg-blue'},
   sow_vax:   {label:'Sow Vaccine', cls:'bg-blue'},
   move:      {label:'Move / Housing', cls:'bg-or'},
@@ -3206,6 +3230,39 @@ const TASK_TYPES={
   clean:     {label:'Clean Hut',   cls:'bg-yw'},
   ear_notch: {label:'Ear Notch',   cls:'bg-lt'},
 };
+
+// Manual to-dos
+let _manualTasks=JSON.parse(localStorage.getItem('bf_manual_tasks')||'[]');
+function saveManualTasks(){localStorage.setItem('bf_manual_tasks',JSON.stringify(_manualTasks));}
+
+function saveManualTask(){
+  const name=document.getElementById('mt-name').value.trim();
+  const due=document.getElementById('mt-due').value;
+  if(!name||!due){toast('Please enter a task name and due date');return;}
+  _manualTasks.push({
+    id:'manual-'+uid(),
+    name,due,
+    animal:document.getElementById('mt-animal').value.trim(),
+    note:document.getElementById('mt-note').value.trim(),
+    created:new Date().toISOString().split('T')[0]
+  });
+  saveManualTasks();
+  closeModal('manual-task-modal');
+  ['mt-name','mt-due','mt-animal','mt-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  renderTasks();
+  toast('To-do added');
+}
+
+function deleteManualTask(id){
+  _manualTasks=_manualTasks.filter(t=>t.id!==id);
+  saveManualTasks();renderTasks();
+}
+
+function updateManualTaskDue(id,newDue){
+  const t=_manualTasks.find(x=>x.id===id);
+  if(t){t.due=newDue;saveManualTasks();renderTasks();}
+}
+
 
 function buildTaskList(){
   const today=new Date().toISOString().split('T')[0];
@@ -3323,6 +3380,12 @@ function buildTaskList(){
 
   });
 
+  // Add manual tasks
+  _manualTasks.forEach(t=>{
+    tasks.push({id:t.id,type:'manual',animal:t.animal||'Manual',
+      name:t.name,due:t.due,note:t.note||'',filter:'manual',isManual:true});
+  });
+
   // Sort: overdue first, then by date
   const today2=today;
   tasks.sort((a,b)=>{
@@ -3387,7 +3450,8 @@ function renderTasks(){
   document.getElementById('task-list-body').innerHTML=groups.map(g=>{
     const rows=g.tasks.map(t=>{
       const ts=_taskState[t.id]||{};
-      const st=taskStatus(t.due);
+      const effectiveDue=ts.dueOverride||t.due;
+      const st=taskStatus(effectiveDue);
       const tt=TASK_TYPES[t.type]||{label:t.type,cls:'bg-lt'};
       const rowCls=ts.done?'completed':ts.skipped?'skipped':st==='overdue'?'overdue':st==='due-soon'?'due-soon':'';
       return`<div class="task-row ${rowCls}" id="taskrow-${t.id}">
@@ -3399,22 +3463,27 @@ function renderTasks(){
         </span>
         <span>
           <div class="task-animal">${t.animal}</div>
-          <div class="task-due ${ts.skipped?'skipped-due':st==='overdue'?'overdue':st==='due-soon'?'soon':'ok'}" style="margin-top:3px">${fmtDate(t.due)}${!ts.skipped&&st==='overdue'?` <span style="font-size:10px">(${Math.abs(dateDiff(today,t.due))}d ago)</span>`:!ts.skipped&&st==='due-soon'?` <span style="font-size:10px">(${dateDiff(today,t.due)}d)</span>`:''}</div>
+          <div class="task-due ${ts.skipped?'skipped-due':st==='overdue'?'overdue':st==='due-soon'?'soon':'ok'}" style="margin-top:3px">${fmtDate(effectiveDue)}${!ts.skipped&&st==='overdue'?` <span style="font-size:10px">(${Math.abs(dateDiff(today,t.due))}d ago)</span>`:!ts.skipped&&st==='due-soon'?` <span style="font-size:10px">(${dateDiff(today,t.due)}d)</span>`:''}</div>
         </span>
         <span class="task-outcome-col">
-          <div style="margin-bottom:4px">
-            <input type="date" value="${ts.completedDate||''}" style="font-size:11px;padding:2px 4px;width:100%" placeholder="Date done" onchange="setTaskDate('${t.id}',this.value)" title="Date completed">
+          <div style="display:flex;gap:4px;margin-bottom:3px;align-items:center">
+            <span style="font-size:10px;color:var(--text-light);white-space:nowrap">Due:</span>
+            <input type="date" value="${ts.dueOverride||t.due}" style="font-size:11px;padding:2px 4px;flex:1"
+              onchange="${t.isManual?`updateManualTaskDue('${t.id}',this.value)`:`setTaskDueOverride('${t.id}',this.value)`}"
+              title="Change due date">
           </div>
-          <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-mid);cursor:pointer;white-space:nowrap">
+          <div style="display:flex;gap:4px;margin-bottom:3px;align-items:center">
+            <span style="font-size:10px;color:var(--text-light);white-space:nowrap">Done:</span>
+            <input type="date" value="${ts.completedDate||''}" style="font-size:11px;padding:2px 4px;flex:1" placeholder="date" onchange="setTaskDate('${t.id}',this.value)">
+          </div>
+          <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-mid);cursor:pointer;white-space:nowrap;margin-bottom:3px">
             <input type="checkbox" ${ts.skipped?'checked':''} style="width:12px;height:12px" onchange="skipTask('${t.id}',this.checked)">
             Not done / N/A
           </label>
-          <div style="margin-top:4px">
-            <input type="text" value="${ts.taskNotes||''}" placeholder="Intervention notes…"
-              style="width:100%;font-size:11px;padding:2px 5px;border:1px solid var(--border);border-radius:4px;background:${ts.taskNotes?'var(--blue-pale)':'transparent'}"
-              onchange="setTaskNotes('${t.id}',this.value)"
-              title="Notes about this task or intervention">
-          </div>
+          <input type="text" value="${ts.taskNotes||''}" placeholder="Notes…"
+            style="width:100%;font-size:11px;padding:2px 5px;border:1px solid var(--border);border-radius:4px;background:${ts.taskNotes?'var(--blue-pale)':'transparent'}"
+            onchange="setTaskNotes('${t.id}',this.value)">
+          ${t.isManual?`<button class="btn btn-sm btn-danger" style="margin-top:3px;padding:1px 6px;font-size:10px" onclick="deleteManualTask('${t.id}')">Delete</button>`:''}
         </span>
       </div>`;
     }).join('');
@@ -3455,6 +3524,12 @@ function setTaskDate(id,val){
   saveTaskState();
 }
 
+function setTaskDueOverride(id,val){
+  if(!_taskState[id])_taskState[id]={};
+  _taskState[id].dueOverride=val;
+  saveTaskState();renderTasks();
+}
+
 function setTaskNotes(id,val){
   if(!_taskState[id])_taskState[id]={};
   _taskState[id].taskNotes=val.trim();
@@ -3485,645 +3560,29 @@ function exportTasksCSV(){
 // ESTIMATOR — piglet-centric scratchpad, never touches real data
 // ─────────────────────────────────────────────────────────────────────────────
 
-let estPigs=JSON.parse(localStorage.getItem('bf_estimator_v2')||'[]');
-function saveEst(){localStorage.setItem('bf_estimator_v2',JSON.stringify(estPigs));}
-
-const EST_DESIGS=['Available','Young Feeder','Young Whole Pig','Montanera Finished','Campo Reserva','Curing','Breeder','Boar'];
-const EST_NO_WINDOW=['Curing','Breeder','Boar'];
-const EST_NO_SALE=['Curing','Breeder','Boar','Undecided'];
-
-
-function estGetDates(sowName){
-  if(!sowName)return{farrow:'',wean:''};
-  // Try breeder record first
-  const br=breeders.find(b=>b.sow===sowName);
-  if(br){
-    const bd=calcBreedDate(br);
-    if(bd){
-      const farrow=addDays(bd,FARROW_OFFSET);
-      // Try linked litter for wean date
-      const lit=br.litterId?getL(br.litterId):null;
-      const wean=lit?getWeanDate(lit)||'':'';
-      // If no wean from linked litter, try any litter with this sow name
-      if(!wean){
-        const anyLit=litters.find(l=>l.sow===sowName);
-        const wean2=anyLit?getWeanDate(anyLit)||'':'';
-        return{farrow,wean:wean2};
-      }
-      return{farrow,wean};
-    }
-  }
-  // Fall back to litter records
-  const lit=litters.find(l=>l.sow===sowName&&l.date);
-  if(lit)return{farrow:lit.date||'',wean:getWeanDate(lit)||''};
-  return{farrow:'',wean:''};
-}
-
-function estSowList(){
-  const names=new Set();
-  breeders.forEach(b=>{if(b.sow)names.add(b.sow);});
-  litters.forEach(l=>{if(l.sow)names.add(l.sow);});
-  return[...names].sort();
-}
-
-function makePig(sowName){
-  const d=estGetDates(sowName||'');
-  return{id:uid(),sow:sowName||'',farrow:d.farrow,wean:d.wean,desig:'Available',reserved:false,note:''};
-}
-
-// Normalize designation — ensures stored values match EST_DESIGS exactly
-function estNormalizeDesig(d){
-  if(!d||!EST_DESIGS.includes(d))return'Available';
-  return d;
-}
-
-function estReadyDates(desig,farrow,wean){
-  if(!farrow)return null;
-  const w=wean||addDays(farrow,60);
-  if(desig==='Young Feeder')      return{from:addDays(w,3),              to:addDays(farrow,Math.round(4*30.44))};
-  if(desig==='Young Whole Pig')   return{from:addDays(farrow,Math.round(5*30.44)),  to:addDays(farrow,Math.round(13*30.44))};
-  if(desig==='Montanera Finished')return{from:addDays(farrow,Math.round(14*30.44)), to:addDays(farrow,Math.round(18*30.44))};
-  if(desig==='Campo Reserva')     return{from:addDays(farrow,14),         to:addDays(farrow,Math.round(4*30.44))};
-  return null;
-}
-
-function estAvailStr(p){
-  const today=new Date().toISOString().split('T')[0];
-  const desig=estNormalizeDesig(p.desig);
-  if(EST_NO_WINDOW.includes(desig))return'Not for sale';
-  const farrow=p.farrow||'';
-  const wean=p.wean||'';
-  if(desig==='Available'){
-    if(!farrow)return'—';
-    const w=wean||addDays(farrow,60);
-    const from=addDays(w,3);
-    return from<=today?'Available immediately':'First available '+fmtDate(from);
-  }
-  if(!farrow)return'Add farrow date';
-  const dates=estReadyDates(desig,farrow,wean);
-  if(!dates)return'Add farrow date';
-  if(dates.to<today)return'Window passed';
-  if(dates.from<=today)return'Available immediately';
-  return fmtDate(dates.from)+' \u2013 '+fmtDate(dates.to);
-}
-
-function renderEstimator(){renderEstSummary();renderEstTable();}
-
-// ── SUMMARY ───────────────────────────────────────────────────────────────────
-function renderEstSummary(){
-  const con=document.getElementById('est-summary');if(!con)return;
-  if(!estPigs.length){con.innerHTML='';return;}
-
-  // Normalize all designations before tallying
-  const tally={};EST_DESIGS.forEach(d=>tally[d]={total:0,reserved:0,pigs:[]});
-  estPigs.forEach(p=>{
-    const d=estNormalizeDesig(p.desig);
-    tally[d].total++;tally[d].pigs.push(p);
-    if(p.reserved)tally[d].reserved++;
-  });
-
-  const totalPigs=estPigs.length;
-  const totalRsv=estPigs.filter(p=>p.reserved).length;
-
-  let html='<div style="font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Summary</div>'
-    +'<div class="est-summary-grid">'
-    +'<div class="est-summary-card" style="border-color:var(--blue-dark)">'
-      +'<div class="sc-num" style="color:var(--blue-dark)">'+totalPigs+'</div>'
-      +'<div class="sc-label">Total Piglets</div>'
-      +(totalRsv?'<div class="sc-dates" style="color:var(--blue)">'+totalRsv+' reserved</div>':'')
-    +'</div>';
-
-  EST_DESIGS.forEach(d=>{
-    const t=tally[d];if(!t||t.total===0)return;
-    const isAvail=d==='Available';
-    const isNoSale=EST_NO_SALE.includes(d);
-    let datesHtml='';
-    if(isNoSale){
-      datesHtml='<div class="sc-dates">Not for sale</div>';
-    } else {
-      const sample=t.pigs.find(p=>p.farrow)||t.pigs[0];
-      datesHtml='<div class="sc-dates">'+estAvailStr(sample)+'</div>';
-    }
-    let rsvLine='';
-    if(!isNoSale&&t.reserved>0){
-      rsvLine='<div class="sc-dates" style="color:var(--blue)">'+t.reserved+' reserved</div>';
-      const avail=t.total-t.reserved;
-      if(avail>0)rsvLine+='<div class="sc-dates">'+avail+' unreserved</div>';
-    }
-    const bySow={};
-    t.pigs.forEach(p=>{
-      const s=p.sow||'Unknown';
-      if(!bySow[s])bySow[s]={total:0,reserved:0,notes:[]};
-      bySow[s].total++;
-      if(p.reserved){bySow[s].reserved++;if(p.note)bySow[s].notes.push(p.note);}
-    });
-    const sowLines=Object.entries(bySow).map(([sow,s])=>{
-      let line='<div class="sc-sow">'+sow+': '+s.total+(s.reserved?' ('+s.reserved+' rsv)':'')+'</div>';
-      if(s.notes.length)line+='<div class="sc-note">'+s.notes.join(' \u00b7 ')+'</div>';
-      return line;
-    }).join('');
-    const borderStyle=isAvail?'border-color:var(--orange);':t.reserved===t.total&&t.total>0?'border-color:var(--blue-light);background:rgba(91,158,201,.05);':'';
-    html+='<div class="est-summary-card" style="'+borderStyle+'">'
-      +'<div class="sc-num">'+t.total+'</div>'
-      +'<div class="sc-label">'+d+'</div>'
-      +datesHtml+rsvLine+sowLines
-    +'</div>';
-  });
-  html+='</div>';
-  con.innerHTML=html;
-}
-
-// ── TABLE ─────────────────────────────────────────────────────────────────────
-function renderEstTable(){
-  const con=document.getElementById('est-table');if(!con)return;
-  if(!estPigs.length){
-    con.innerHTML='<div style="color:var(--text-light);font-size:13px;padding:20px 0;text-align:center">No estimated piglets yet \u2014 click <strong>+ Add Batch (6)</strong> or <strong>+ Add Piglet</strong>.</div>';
-    return;
-  }
-
-  // Sort by sow name so same-sow pigs are grouped, preserving insertion order within sow
-  const sorted=[...estPigs].sort((a,b)=>(a.sow||'').localeCompare(b.sow||''));
-
-  const sowList=estSowList();
-  const sowOpts=sowList.map(n=>`<option value="${n}">`).join('');
-
-  const rows=sorted.map((p,si)=>{
-    // Find original index for mutations
-    const origIdx=estPigs.indexOf(p);
-    const desig=estNormalizeDesig(p.desig);
-    const avail=estAvailStr(p);
-    const isOpen=!p.reserved&&!EST_NO_WINDOW.includes(desig);
-    const desigOpts=EST_DESIGS.map(d=>`<option value="${d}"${desig===d?' selected':''}>${d}</option>`).join('');
-    const rowStyle=isOpen?'background:rgba(45,122,79,.06);':p.reserved?'background:rgba(91,158,201,.06);':'';
-    const numStyle=isOpen?'font-weight:700;color:var(--green);':'color:var(--text-light);';
-    return `<tr style="${rowStyle}">
-      <td style="text-align:center;font-size:11px;${numStyle}">${si+1}</td>
-      <td><input type="text" list="est-sl" value="${p.sow||''}" placeholder="Sow name" data-i="${origIdx}" data-f="sow" class="est-inp"${isOpen?' style="font-weight:700"':''}></td>
-      <td><input type="date" value="${p.farrow||''}" data-i="${origIdx}" data-f="farrow" class="est-inp"></td>
-      <td><input type="date" value="${p.wean||''}" data-i="${origIdx}" data-f="wean" class="est-inp"></td>
-      <td><select data-i="${origIdx}" data-f="desig" class="est-inp">${desigOpts}</select></td>
-      <td class="ro"${isOpen?' style="font-weight:700;color:var(--green)"':''}>${avail}</td>
-      <td style="text-align:center"><input type="checkbox" ${p.reserved?'checked':''} data-i="${origIdx}" data-f="reserved" class="est-inp"></td>
-      <td><input type="text" value="${p.note||''}" placeholder="Notes\u2026" data-i="${origIdx}" data-f="note" class="est-inp"></td>
-      <td style="text-align:center"><button class="btn btn-sm btn-danger" style="padding:2px 7px" data-del="${origIdx}">\u2715</button></td>
-    </tr>`;
-  }).join('');
-
-  con.innerHTML='<div style="font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Piglet List</div>'
-    +'<datalist id="est-sl">'+sowOpts+'</datalist>'
-    +'<div class="tw"><table class="est-tbl"><thead><tr>'
-    +'<th>#</th><th style="min-width:130px">Sow</th><th>Farrow Date</th><th>Wean Date</th>'
-    +'<th style="min-width:160px">Designation</th><th style="min-width:180px">Available</th>'
-    +'<th>Rsv</th><th style="min-width:160px">Notes</th><th></th>'
-    +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
-
-  con.querySelectorAll('.est-inp').forEach(el=>{
-    el.addEventListener('change',()=>{
-      const i=parseInt(el.dataset.i);const f=el.dataset.f;
-      const p=estPigs[i];if(!p)return;
-
-      if(f==='reserved') p[f]=el.checked;
-      else p[f]=el.value;
-
-      if(f==='sow'){
-        // Auto-fill farrow+wean from real data; propagate wean to existing same-sow pigs
-        const d=estGetDates(el.value);
-        p.farrow=d.farrow;p.wean=d.wean;
-        // Also propagate farrow+wean to all other pigs already assigned to this sow
-        estPigs.forEach((op,oi)=>{
-          if(oi!==i&&op.sow===el.value){
-            if(d.farrow)op.farrow=d.farrow;
-            if(d.wean)op.wean=d.wean;
-          }
-        });
-      }
-
-      if(f==='wean'&&p.sow){
-        // Propagate wean change to all pigs with same sow
-        estPigs.forEach((op,oi)=>{if(oi!==i&&op.sow===p.sow)op.wean=el.value;});
-      }
-
-      if(f==='farrow'&&p.sow){
-        // Propagate farrow change to all pigs with same sow
-        estPigs.forEach((op,oi)=>{if(oi!==i&&op.sow===p.sow)op.farrow=el.value;});
-      }
-
-      saveEst();renderEstimator();
-    });
-  });
-
-  con.querySelectorAll('[data-del]').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      estPigs.splice(parseInt(btn.dataset.del),1);
-      saveEst();renderEstimator();
-    });
-  });
-}
-
-function estAddOne(){
-  estPigs.push(makePig(''));
-  saveEst();renderEstimator();
-  setTimeout(()=>{
-    // After sort, blank-sow pigs appear at top — scroll to first blank
-    const rows=document.querySelectorAll('.est-tbl tbody tr');
-    if(rows.length)rows[0].scrollIntoView({behavior:'smooth',block:'center'});
-  },50);
-}
-
-function estAddBatch(){
-  for(let i=0;i<6;i++)estPigs.push(makePig(''));
-  saveEst();renderEstimator();
-  setTimeout(()=>{
-    const rows=document.querySelectorAll('.est-tbl tbody tr');
-    if(rows.length)rows[0].scrollIntoView({behavior:'smooth',block:'center'});
-  },50);
-}
-
-function clearEstimator(){
-  if(!confirm('Clear all estimated piglets?'))return;
-  estPigs=[];saveEst();renderEstimator();toast('Estimator cleared');
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// STARTUP INTEGRITY SCRUB — cleans orphaned references from deleted litters
+// STARTUP INTEGRITY SCRUB
 // ─────────────────────────────────────────────────────────────────────────────
 function scrubIntegrity(){
-  syncAutoBoars(); // ensure auto-boar list is fresh
+  syncAutoBoars();
   const litterIds=new Set(litters.map(l=>l.id));
   let dirty=false;
-
-  // 1. Breeders: unlink any litterId pointing to a deleted litter
+  // Breeders: unlink any litterId pointing to a deleted litter
   breeders.forEach(b=>{
-    if(b.litterId&&!litterIds.has(b.litterId)){
-      b.litterId='';b.confirmed=false;dirty=true;
-    }
+    if(b.litterId&&!litterIds.has(b.litterId)){b.litterId='';b.confirmed=false;dirty=true;}
   });
-
-  // 2. Task state: remove completion state for tasks whose litter no longer exists
-  //    Task IDs are formatted as "lit-<litterId>::..." or "sow-<litterId>::..."
+  // Task state: remove completion entries for tasks whose litter no longer exists
   Object.keys(_taskState).forEach(key=>{
-    const m=key.match(/^(?:lit|sow)-([^:]+)::/);
+    const m=key.match(/^(?:lit|sow|pig)-([^:]+)::/);
     if(m&&!litterIds.has(m[1])){delete _taskState[key];dirty=true;}
   });
-
-  // 3. Auto-boars: remove boars that were auto-added from litters that no longer exist
-  const validBoarNames=new Set();
-  litters.forEach(l=>{if(l.boar)validBoarNames.add(l.boar);});
-  breeders.forEach(b=>{(b.attempts||[]).forEach(a=>{if(a.boar)validBoarNames.add(a.boar);});});
-  const prevBoarCount=manualBoars.length;
-  manualBoars=manualBoars.filter(b=>b.notes!=='auto'||validBoarNames.has(b.name));
-  if(manualBoars.length!==prevBoarCount)dirty=true;
-
-  if(dirty){save();saveTaskState();saveHerd();}
-}
-
-// Purge stale data from old app versions that may contain ghost litters
-['bf_litters','bf_litters_v1','bf_litters_v2','bf_litters_v3','bf_litters_v4','bf_litters_v5',
- 'bf_breeders','bf_breeders_v1'].forEach(k=>localStorage.removeItem(k));
-
-// Update just the litter card header badges without re-rendering the whole card
-function updateLitterHeader(lid){
-  const l=getL(lid);if(!l)return;
-  // Surgically update just the farrow badge — no card rebuild
-  const badge=document.getElementById(`farrow-badge-${lid}`);
-  if(badge){
-    if(l.date){
-      badge.textContent=`Farrow ${fmtDate(l.date)}${l.farrowIsActual?'':' (est.)'}`;
-      badge.style.cssText='font-size:11px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);border-radius:4px;padding:1px 7px;margin-left:4px';
-    } else {
-      badge.textContent='';
-      badge.style.cssText='';
-    }
-  }
-  // Update the lmeta line (boar · dur · parity · weaned) — no re-render needed
-  // Update task list since farrow date affects due dates
-  renderTasks();
-  renderSummary();
-}
-
-// Get the effective farrow date — actual if set, otherwise expected
-function getLitterFarrow(l){
-  return l.date||l.expectedFarrow||'';
-}
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// EXCEL EXPORT — one sheet per litter, formatted for printing
-// ─────────────────────────────────────────────────────────────────────────────
-function exportExcel(){
-  if(typeof XLSX==='undefined'){
-    toast('Excel export requires internet connection (loading SheetJS). Please try again in a moment.');
-    return;
-  }
-  const selIds=new Set([...document.querySelectorAll('.exp-litter-cb:checked')].map(cb=>cb.value));
-  const selLitters=litters.filter(l=>selIds.has(l.id));
-  if(!selLitters.length){toast('Select at least one litter to export');return;}
-
-  const wb=XLSX.utils.book_new();
-
-  // ── Color palette ──────────────────────────────────────────────────────────
-  const NAVY  ={fgColor:{rgb:'1A3A5C'}};
-  const BLUE  ={fgColor:{rgb:'2B6CB0'}};
-  const LBLUE ={fgColor:{rgb:'EBF4FF'}};
-  const MBLUE ={fgColor:{rgb:'C3DCF5'}};
-  const GREEN ={fgColor:{rgb:'E6F4EA'}};
-  const ORANGE={fgColor:{rgb:'FFF3E0'}};
-  const GRAY  ={fgColor:{rgb:'F5F5F5'}};
-  const WHITE ={fgColor:{rgb:'FFFFFF'}};
-
-  const hdrFont ={name:'Arial',bold:true,color:{rgb:'FFFFFF'},sz:11};
-  const subFont ={name:'Arial',bold:true,sz:10};
-  const bodyFont={name:'Arial',sz:10};
-  const dimFont ={name:'Arial',sz:9,color:{rgb:'666666'},italic:true};
-  const monoFont={name:'Courier New',sz:10};
-
-  const hdrFill =NAVY;
-  const subFill =BLUE;
-  const altFill =LBLUE;
-
-  const thin={style:'thin',color:{rgb:'B0C4DE'}};
-  const med ={style:'medium',color:{rgb:'1A3A5C'}};
-  const bord=(top,bot,l,r)=>({top:top,bottom:bot,left:l,right:r});
-  const allThin=bord(thin,thin,thin,thin);
-  const allMed =bord(med,med,med,med);
-
-  const center={horizontal:'center',vertical:'center',wrapText:true};
-  const left  ={horizontal:'left',  vertical:'center',wrapText:true};
-  const right ={horizontal:'right', vertical:'center'};
-
-  function cell(v,font,fill,align,border,numFmt){
-    const c={v:v===null||v===undefined?'':v,t:typeof v==='number'?'n':'s'};
-    if(font)c.s={...(c.s||{}),font};
-    if(fill)c.s={...(c.s||{}),fill:{patternType:'solid',...fill}};
-    if(align)c.s={...(c.s||{}),alignment:align};
-    if(border)c.s={...(c.s||{}),border};
-    if(numFmt)c.s={...(c.s||{}),numFmt};
-    return c;
-  }
-  function hdr(v){return cell(v,hdrFont,hdrFill,center,allMed);}
-  function sub(v){return cell(v,subFont,subFill,{...left,wrapText:false},{top:thin,bottom:thin,left:thin,right:thin},{color:{rgb:'FFFFFF'}});}
-  function lbl(v){return cell(v,{...bodyFont,bold:true},MBLUE,left,allThin);}
-  function val(v,mono){return cell(v,mono?monoFont:bodyFont,WHITE,left,allThin);}
-  function sect(v){return cell(v,{name:'Arial',bold:true,sz:10,color:{rgb:'1A3A5C'}},{fgColor:{rgb:'D6E8F7'}},left,allMed);}
-  function alt(v,i){return cell(v,bodyFont,i%2===0?WHITE:altFill,left,allThin);}
-  function dim(v){return cell(v,dimFont,{fgColor:{rgb:'FAFAFA'}},left,allThin);}
-
-  function mergePush(ws,row,data,merges,startR,c0,span,style){
-    // push a full-width merged header row
-    const r=startR+row;
-    data[r]={};data[r][c0]=style(merges.label||'');
-    if(span>1)merges.push({s:{r,c:c0},e:{r,c:c0+span-1}});
-  }
-
-  selLitters.forEach((l,li)=>{
-    const{total,bornAlive,stillMum,diedPost,alive}=litTallies(l);
-    const wd=getWeanDate(l);
-    const farrow=getLitterFarrow(l);
-    const sheetName=(l.sow||'Litter').replace(/[:\\\/\?\*\[\]]/g,'').slice(0,28)+(selLitters.filter(x=>x.sow===l.sow).length>1?` ${li+1}`:'');
-
-    const ws={};
-    const merges=[];
-    let r=0;
-
-    // Helper to write a row
-    function wr(rowData){
-      rowData.forEach((c,ci)=>{
-        const addr=XLSX.utils.encode_cell({r,c:ci});
-        ws[addr]=c;
-      });
-      r++;
-    }
-
-    function mergeRow(label,styleF,cols){
-      const addr=XLSX.utils.encode_cell({r,c:0});
-      ws[addr]=styleF(label);
-      if(cols>1)merges.push({s:{r,c:0},e:{r,c:cols-1}});
-      r++;
-    }
-
-    function kv(k,v,k2,v2){
-      wr([lbl(k),val(v,false),lbl(k2||''),val(v2||'',false)]);
-    }
-
-    const COLS=6;
-
-    // ── Title ─────────────────────────────────────────────────────────────────
-    mergeRow(`BELLOTA FARMS — Litter Record`,hdr,COLS);
-    mergeRow(`${l.sow||'—'}  ×  ${l.boar||'—'}`,sub,COLS);
-    r++; // spacer
-
-    // ── Litter Summary ────────────────────────────────────────────────────────
-    mergeRow('LITTER SUMMARY',sect,COLS);
-    kv('Sow',l.sow||'—','Tag / ID',l.sowTag||'—');
-    kv('Sire (Boar)',l.boar||'—','Parity',l.parity||'—');
-    kv('Farrow Date',farrow?fmtDate(farrow)+(l.farrowIsActual?' (actual)':' (estimated)'):'—','Wean Date',wd?fmtDate(wd):'—');
-    kv('Breed Date',l.breedDate?fmtDate(l.breedDate):'—','Hut / Stall',l.stall||'—');
-    kv('Sow Weight',l.sowWt?(l.sowWt+' lbs'):'—','Gestation',l.gestation?(l.gestation+' days'):'—');
-    kv('Move-in',l.movedIn?fmtDate(l.movedIn):'—','Move-out',l.movedOut?fmtDate(l.movedOut):'—');
-    kv('Farrowing Duration',calcDur(l.timeFirst,l.timeLast)||'—','','');
-    r++; // spacer
-
-    // ── Counts ────────────────────────────────────────────────────────────────
-    mergeRow('PIGLET COUNTS',sect,COLS);
-    wr([lbl('Total Born'),val(total),lbl('Born Alive'),val(bornAlive),lbl('Still/Mum'),val(stillMum)]);
-    wr([lbl('Died Post-Birth'),val(diedPost),lbl('Currently Alive'),val(alive),lbl(''),val('')]);
-    r++;
-
-    // ── Vaccine Status ────────────────────────────────────────────────────────
-    mergeRow('VACCINE STATUS',sect,COLS);
-    kv('Piglet Vax Complete',l.pigVaxComplete?'Yes'+(l.pigVaxCompleteDate?' — '+l.pigVaxCompleteDate:''):'No',
-       'Sow Vax Complete',l.sowVaxComplete?'Yes'+(l.sowVaxCompleteDate?' — '+l.sowVaxCompleteDate:''):'No');
-    r++;
-
-    // ── Notes ─────────────────────────────────────────────────────────────────
-    if(l.interventions||l.notes){
-      mergeRow('NOTES & INTERVENTIONS',sect,COLS);
-      if(l.interventions){
-        const a=XLSX.utils.encode_cell({r,c:0});ws[a]=lbl('Interventions');
-        const b2=XLSX.utils.encode_cell({r,c:1});ws[b2]=val(l.interventions);
-        merges.push({s:{r,c:1},e:{r,c:COLS-1}});r++;
-      }
-      if(l.notes){
-        const a=XLSX.utils.encode_cell({r,c:0});ws[a]=lbl('Notes');
-        const b2=XLSX.utils.encode_cell({r,c:1});ws[b2]=val(l.notes);
-        merges.push({s:{r,c:1},e:{r,c:COLS-1}});r++;
-      }
-      r++;
-    }
-
-    // ── Birth Record ──────────────────────────────────────────────────────────
-    mergeRow('BIRTH RECORD',sect,COLS);
-    wr(['#','Status','Sex','Time Born','Birth Wt','Color / Markings','Ear Notch','Nipples','Castration Date','Designation','Notes'].map(hdr));
-    merges.push({s:{r:r-1,c:0},e:{r:r-1,c:10}});// header spans 11 cols
-    l.piglets.forEach((p,pi)=>{
-      const rowBg=p.status==='dead'?{fgColor:{rgb:'FFE5E5'}}:p.status==='stillborn'||p.status==='mummified'?{fgColor:{rgb:'FFF3CD'}}:pi%2===0?WHITE:altFill;
-      const pCell=(v)=>cell(v,bodyFont,rowBg,left,allThin);
-      wr([pCell(p.num),pCell(p.status),pCell(p.sex||''),pCell(p.timeBorn||''),
-          pCell(p.birthOz?fmtOz(p.birthOz):''),pCell(p.color||''),
-          pCell(p.earNotch||''),pCell(p.nippleCount||''),pCell(p.castrationDate||''),
-          pCell(p.designation||'undecided'),pCell(p.notes||'')]);
-    });
-    r++;
-
-    // ── Weight Checkpoints ────────────────────────────────────────────────────
-    if(l.weightCheckpoints&&l.weightCheckpoints.length){
-      mergeRow('WEIGHT CHECKPOINTS',sect,COLS);
-      l.weightCheckpoints.forEach(cp=>{
-        const target=farrow?addDays(farrow,cp.days):'';
-        mergeRow(`${cp.label}${cp.isWean?' (Weaning)':''} — Day ${cp.days}${target?' — Target: '+fmtDate(target):''}`,
-          (v)=>cell(v,{name:'Arial',bold:true,sz:10},MBLUE,left,allThin),COLS);
-        wr(['#','Sex','Color','Ear Notch','Status','Birth Wt','Weight','Display','Gain (oz)','% Gain','Notes'].map(v=>cell(v,{...subFont,sz:9},{fgColor:{rgb:'D6E8F7'}},center,allThin)));
-        l.piglets.forEach((p,pi)=>{
-          const wval=(p.weights||{})[cp.id]||'';
-          const g=gain(p.birthOz,wval);
-          const bg=pi%2===0?WHITE:altFill;
-          const pc=(v)=>cell(v,bodyFont,bg,left,allThin);
-          wr([pc(p.num),pc(p.sex||''),pc(p.color||''),pc(p.earNotch||''),pc(p.status),
-              pc(p.birthOz?fmtOz(p.birthOz):''),pc(wval||''),pc(wval?fmtOz(wval):''),
-              pc(g.oz!==null?g.oz+' oz':''),pc(g.pct!==null?g.pct+'%':''),pc(p.notes||'')]);
-        });
-        r++;
-      });
-    }
-
-    // ── Piglet Vaccines ───────────────────────────────────────────────────────
-    if(l.pigVax&&l.pigVax.length){
-      mergeRow('PIGLET VACCINES',sect,COLS);
-      wr(['Vaccine','Dose','Anchor','Expected Date','Actual Date','Done','Notes'].map(hdr));
-      (l.pigVax||[]).forEach((v,vi)=>{
-        let ex='';
-        if(v.anchor==='birth'&&farrow)ex=fmtDate(addDays(farrow,v.offsetDays));
-        else if(v.anchor==='wean'&&wd)ex=fmtDate(addDays(wd,v.offsetDays));
-        const bg=vi%2===0?WHITE:altFill;
-        const vc=(val2)=>cell(val2,bodyFont,bg,left,allThin);
-        wr([vc(v.label),vc(v.dose),vc(v.anchor==='birth'?'Farrow+'+v.offsetDays+'d':'Wean+'+v.offsetDays+'d'),
-            vc(ex),vc(v.actualDate?fmtDate(v.actualDate):''),
-            vc(v.done?'✓ Done':'Pending'),vc(v.actualNotes||v.note||'')]);
-      });
-      r++;
-    }
-
-    // ── Sow Vaccines ──────────────────────────────────────────────────────────
-    if(l.sowVax&&l.sowVax.length){
-      mergeRow('SOW VACCINES & SUPPLEMENTS',sect,COLS);
-      wr(['Item','Type','Dose','Applies To','Expected Date','Actual Date','Done','Notes'].map(hdr));
-      (l.sowVax||[]).forEach((v,vi)=>{
-        let ex='';
-        if(v.anchor==='breed'&&l.breedDate)ex=fmtDate(addDays(l.breedDate,v.offsetDays));
-        else if(v.anchor==='farrow'&&farrow)ex=fmtDate(addDays(farrow,v.offsetDays));
-        const bg=vi%2===0?WHITE:altFill;
-        const vc=(val2)=>cell(val2,bodyFont,bg,left,allThin);
-        wr([vc(v.label),vc(v.supp?'Supplement':'Vaccine'),vc(v.dose),
-            vc(v.giltsOnly?'Gilts only':'All females'),
-            vc(ex),vc(v.actualDate?fmtDate(v.actualDate):''),
-            vc(v.done?'✓ Done':'Pending'),vc(v.actualNotes||v.note||'')]);
-      });
-      r++;
-    }
-
-    // ── Health Events ─────────────────────────────────────────────────────────
-    if(l.events&&l.events.length){
-      mergeRow('HEALTH EVENTS',sect,COLS);
-      wr(['Date','Event / Treatment','Dose / Amount','Notes'].map(hdr));
-      l.events.forEach((e,ei)=>{
-        const bg=ei%2===0?WHITE:altFill;
-        const ec=(val2)=>cell(val2,bodyFont,bg,left,allThin);
-        wr([ec(e.date?fmtDate(e.date):''),ec(e.name||''),ec(e.dose||''),ec(e.notes||'')]);
-      });
-      r++;
-    }
-
-    // ── Location History ──────────────────────────────────────────────────────
-    if(l.locationLog&&l.locationLog.length){
-      mergeRow('LOCATION HISTORY',sect,COLS);
-      wr(['Date','Location','Notes'].map(hdr));
-      l.locationLog.sort((a,b)=>a.date.localeCompare(b.date)).forEach((e,ei)=>{
-        const bg=ei%2===0?WHITE:altFill;
-        wr([cell(e.date?fmtDate(e.date):'',bodyFont,bg,left,allThin),
-            cell(e.location||'',bodyFont,bg,left,allThin),
-            cell(e.notes||'',bodyFont,bg,left,allThin)]);
-      });
-      r++;
-    }
-
-    // ── Footer ────────────────────────────────────────────────────────────────
-    r++;
-    mergeRow(`Bellota Farms · Exported ${new Date().toLocaleDateString()} · bellotafarms.com`,
-      (v)=>cell(v,dimFont,{fgColor:{rgb:'F0F4F8'}},center,bord(thin,thin,thin,thin)),COLS);
-
-    // Set worksheet range
-    ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:r,c:10}});
-    ws['!merges']=merges;
-
-    // Column widths
-    ws['!cols']=[
-      {wch:18},{wch:22},{wch:18},{wch:22},{wch:18},{wch:22},
-      {wch:14},{wch:14},{wch:16},{wch:18},{wch:28}
-    ];
-
-    // Row heights (approximate — make header rows taller)
-    ws['!rows']=[];
-    for(let i=0;i<r;i++)ws['!rows'].push({hpt:i<2?24:16});
-
-    // Page setup for printing
-    ws['!pageSetup']={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,paperSize:1};
-    ws['!printOptions']={gridLines:false};
-
-    XLSX.utils.book_append_sheet(wb,ws,sheetName);
-  });
-
-  // Add a summary sheet at the front
-  const sumWs={};
-  let sr=0;
-  function sumWr(rowData){
-    rowData.forEach((c,ci)=>{
-      sumWs[XLSX.utils.encode_cell({r:sr,c:ci})]=c;
-    });sr++;
-  }
-  const sumMerges=[];
-  function sumMerge(label,styleF,cols){
-    sumWs[XLSX.utils.encode_cell({r:sr,c:0})]=styleF(label);
-    if(cols>1)sumMerges.push({s:{r:sr,c:0},e:{r:sr,c:cols-1}});
-    sr++;
-  }
-  sumMerge('BELLOTA FARMS — All Litters Summary',hdr,8);
-  sumMerge(`Exported ${new Date().toLocaleDateString()} · ${selLitters.length} litter${selLitters.length===1?'':'s'}`,sub,8);
-  sr++;
-  sumWr(['Sow','Boar','Farrow Date','Type','Total','Alive','Wean Date','Designation Breakdown'].map(hdr));
-  selLitters.forEach((l,li)=>{
-    const{total,alive}=litTallies(l);
-    const wd=getWeanDate(l);
-    const farrow=getLitterFarrow(l);
-    const desigCounts={};
-    l.piglets.filter(p=>p.status==='alive').forEach(p=>{const d=p.designation||'undecided';desigCounts[d]=(desigCounts[d]||0)+1;});
-    const desigStr=Object.entries(desigCounts).map(([d,n])=>`${n} ${d}`).join(', ')||'—';
-    const bg=li%2===0?WHITE:altFill;
-    const sc=(v)=>cell(v,bodyFont,bg,left,allThin);
-    sumWr([sc(l.sow||'—'),sc(l.boar||'—'),
-           sc(farrow?fmtDate(farrow)+(l.farrowIsActual?' ✓':' (est.)') : '—'),
-           sc(l.date?'Actual':'Expected'),sc(total),sc(alive),
-           sc(wd?fmtDate(wd):'—'),sc(desigStr)]);
-  });
-  sumWs['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:sr+1,c:7}});
-  sumWs['!merges']=sumMerges;
-  sumWs['!cols']=[{wch:18},{wch:16},{wch:18},{wch:12},{wch:8},{wch:8},{wch:16},{wch:40}];
-  sumWs['!pageSetup']={orientation:'landscape',fitToPage:true,fitToWidth:1};
-  // Insert summary as first sheet
-  wb.SheetNames.unshift('Summary');
-  wb.Sheets['Summary']=sumWs;
-
-  const wbout=XLSX.write(wb,{bookType:'xlsx',type:'array',cellStyles:true});
-  const blob=new Blob([wbout],{type:'application/octet-stream'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`BellotaFarms_LitterRecords_${new Date().toISOString().split('T')[0]}.xlsx`;
-  a.click();
-  closeModal('exp-modal');toast('Excel file downloaded');
+  if(dirty){save();saveTaskState();}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BACKUP & RESTORE
 // ─────────────────────────────────────────────────────────────────────────────
-const BACKUP_KEYS=['bf_litters_v6','bf_breeders_v2','bf_locations','bf_boars','bf_tasks','bf_estimator_v2'];
+const BACKUP_KEYS=['bf_litters_v6','bf_breeders_v2','bf_locations','bf_boars','bf_tasks'];
 
 function backupData(){
   const snapshot={
@@ -4188,7 +3647,6 @@ function confirmRestore(){
   locationNames=JSON.parse(localStorage.getItem('bf_locations')||'[]');
   manualBoars=JSON.parse(localStorage.getItem('bf_boars')||'[]');
   _taskState=JSON.parse(localStorage.getItem('bf_tasks')||'{}');
-  estPigs=JSON.parse(localStorage.getItem('bf_estimator_v2')||'[]');
   _pendingRestoreData=null;
   closeModal('restore-modal');
   scrubIntegrity();
