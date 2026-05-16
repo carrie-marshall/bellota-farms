@@ -854,6 +854,24 @@ function litTallies(l){
 }
 const getWeanDate=l=>l.actualWeanDate||l.estimatedWeanDate||'';
 const isActuallyWeaned=l=>!!(l.actualWeanDate);
+const getLitterFarrow=l=>l?l.date||l.expectedFarrow||'':'';
+
+// Update just the litter card header badges without re-rendering the whole card
+function updateLitterHeader(lid){
+  const l=getL(lid);if(!l)return;
+  const badge=document.getElementById(`farrow-badge-${lid}`);
+  if(badge){
+    if(l.date){
+      badge.textContent=`Farrow ${fmtDate(l.date)}${l.farrowIsActual?'':' (est.)'}`;
+      badge.style.cssText='font-size:11px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);border-radius:4px;padding:1px 7px;margin-left:4px';
+    } else {
+      badge.textContent='';
+      badge.style.cssText='';
+    }
+  }
+  renderTasks();
+  renderSummary();
+}
 
 // Date diff in days (b - a)
 function dateDiff(a,b){
@@ -2697,7 +2715,7 @@ function runExport(){
     if(inc.birth){
       rows.push(csvR(['BIRTH RECORD']));
       rows.push(csvR(['#','Status','Sex','Time Born','Birth Oz','Birth Wt','Color','Ear Notch','Nipples','Castration','Designation','Notes']));
-      l.piglets.forEach(p=>rows.push(csvR([p.num,p.status,p.sex,p.timeBorn||'',p.minSinceLast||'',p.birthOz||'',p.birthOz?fmtOz(p.birthOz):'',p.color||'',p.earNotch||'',p.nippleCount||'',p.castrationDate||'',p.designation||'undecided',p.notes||''])));
+      l.piglets.forEach(p=>rows.push(csvR([p.num,p.status,p.sex,p.birthOz||'',p.birthOz?fmtOz(p.birthOz):'',p.color||'',p.earNotch||'',p.nippleCount||'',p.castrationDate||'',p.designation||'undecided',p.notes||''])));
       rows.push('');
     }
     if(inc.weights&&l.weightCheckpoints&&l.weightCheckpoints.length){
@@ -3585,7 +3603,7 @@ function scrubIntegrity(){
 // ─────────────────────────────────────────────────────────────────────────────
 // BACKUP & RESTORE
 // ─────────────────────────────────────────────────────────────────────────────
-const BACKUP_KEYS=['bf_litters_v6','bf_breeders_v2','bf_locations','bf_boars','bf_tasks'];
+const BACKUP_KEYS=['bf_litters_v6','bf_breeders_v2','bf_locations','bf_boars','bf_tasks','bf_manual_tasks'];
 
 function backupData(){
   const snapshot={
@@ -3650,6 +3668,7 @@ function confirmRestore(){
   locationNames=JSON.parse(localStorage.getItem('bf_locations')||'[]');
   manualBoars=JSON.parse(localStorage.getItem('bf_boars')||'[]');
   _taskState=JSON.parse(localStorage.getItem('bf_tasks')||'{}');
+  _manualTasks=JSON.parse(localStorage.getItem('bf_manual_tasks')||'[]');
   _pendingRestoreData=null;
   closeModal('restore-modal');
   scrubIntegrity();
