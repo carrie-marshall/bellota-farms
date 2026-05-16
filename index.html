@@ -1988,10 +1988,13 @@ function renderBreeders(){
 
   // Group by proximity to farrow date
   function farrowDaysAway(b){
-    const l=b.litterId?getL(b.litterId):null;
-    const fd=l?getLitterFarrow(l):(()=>{const bd=calcBreedDate(b);return bd?addDays(bd,FARROW_OFFSET+1):null;})();
-    if(!fd)return null;
-    return Math.round((new Date(fd+'T00:00:00')-new Date(today+'T00:00:00'))/(86400000));
+    try{
+      const l=b.litterId?getL(b.litterId):null;
+      const fd=l?getLitterFarrow(l):(()=>{const bd=calcBreedDate(b);return bd?addDays(bd,FARROW_OFFSET+1):null;})();
+      if(!fd)return null;
+      const diff=Math.round((new Date(fd+'T00:00:00')-new Date(today+'T00:00:00'))/(86400000));
+      return isNaN(diff)?null:diff;
+    }catch(e){return null;}
   }
   const nursery=sorted.filter(b=>{const d=farrowDaysAway(b);return d!==null&&(Math.abs(d)<=5||(d<-5&&d>=-21));});
   const postFarrow=sorted.filter(b=>{const d=farrowDaysAway(b);const l=b.litterId?getL(b.litterId):null;return d!==null&&d<-21&&l&&!isActuallyWeaned(l);});
@@ -3688,9 +3691,12 @@ litters.forEach(l=>{
 });
 
 scrubIntegrity();
-renderAll();
-// Breeding Tracker is the default tab — render it on load
-renderGantt();renderHutTable();renderBreeders();
+try{renderAll();}catch(e){console.error('renderAll error:',e);
+  const con=document.getElementById('lc');
+  if(con)con.innerHTML=`<div class="estate" style="background:#fff5f5;border:2px solid var(--red);border-radius:8px;padding:24px"><div style="font-size:32px">⚠️</div><h3 style="color:var(--red)">Display Error</h3><p style="font-size:12px;color:var(--text-mid)">${e.message}</p><button class="btn btn-primary" style="margin-top:12px" onclick="openRestoreModal()">Restore from Backup</button></div>`;
+}
+try{renderGantt();renderHutTable();renderBreeders();}catch(e){console.error('Breeding tracker error:',e);}
+
 </script>
 </body>
 </html>
