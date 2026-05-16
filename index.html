@@ -274,8 +274,8 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
 .cohort-check-item:hover{background:var(--blue-pale);}
 
 /* ── TASK LIST ────────────────────────────────────────────────────────────── */
-.task-col-hdr{display:grid;grid-template-columns:28px 80px 1fr 150px 240px;gap:8px;padding:8px 14px;background:var(--blue-dark);color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-radius:var(--radius) var(--radius) 0 0;}
-.task-row{display:grid;grid-template-columns:28px 80px 1fr 150px 240px;gap:8px;align-items:start;padding:9px 14px;border-bottom:1px solid var(--border);font-size:12px;background:var(--paper);}
+.task-col-hdr{display:grid;grid-template-columns:28px 1fr 160px 280px;gap:10px;padding:8px 14px;background:var(--blue-dark);color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-radius:var(--radius) var(--radius) 0 0;}
+.task-row{display:grid;grid-template-columns:28px 1fr 160px 280px;gap:10px;align-items:start;padding:9px 14px;border-bottom:1px solid var(--border);font-size:12px;background:var(--paper);}
 .task-row:nth-child(even){background:var(--gray-bg);}
 .task-row.completed{opacity:.45;text-decoration:line-through;}
 .task-row.overdue{background:#fff5f5;}
@@ -1934,6 +1934,13 @@ function saveBreeder(){
   toast(editId?`${sow} updated`:`${sow} added to Breeding Tracker`);
 }
 
+function toggleBreedCard(bid){
+  const body=document.getElementById(`breed-body-${bid}`);
+  if(!body)return;
+  body.style.display=body.style.display==='none'?'block':'none';
+}
+
+
 function confirmBreeding(bid){
   const b=breeders.find(x=>x.id===bid);if(!b)return;
 
@@ -2080,23 +2087,24 @@ function renderBreeders(){
     }).join(''):`<div style="font-size:12px;color:var(--text-light);padding:8px 0">No breeding attempts recorded yet.</div>`;
 
     card.innerHTML=`
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;cursor:pointer;padding-bottom:8px" onclick="toggleBreedCard('${b.id}')">
       <div style="display:flex;align-items:center;gap:10px">
         <div style="width:16px;height:16px;border-radius:50%;background:${color};flex-shrink:0"></div>
         <div>
           <div class="breed-sow-name">${b.sow}${b.tag?` <span style="font-size:12px;font-weight:400;color:var(--text-mid)">· ${b.tag}</span>`:''}${b.parity?` <span style="font-size:11px;color:var(--text-light);margin-left:6px">Parity ${b.parity}</span>`:''}</div>
-          ${b.lastEstrus?`<div style="font-size:11px;color:var(--text-light);margin-top:2px">Last estrus: ${fmtDate(b.lastEstrus)}</div>`:''}
+          <div style="font-size:11px;color:var(--text-light);margin-top:2px">${b.confirmed?'<span style="color:var(--green);font-weight:600">✓ Confirmed Bred</span>'+(linkedLitter?' · Litter linked':''):'Unconfirmed'} · click to expand</div>
         </div>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap" onclick="event.stopPropagation()">
         ${b.confirmed
-          ?`<span class="badge bg-gn">Confirmed Bred</span>${linkedLitter?`<span class="badge bg-lt">Litter linked</span>`:''}
-             <button class="btn btn-sm btn-danger" style="font-size:11px" onclick="unconfirmBreeding('${b.id}')">✕ Remove Confirmed</button>`
+          ?`<span class="badge bg-gn">Confirmed</span>${linkedLitter?`<span class="badge bg-lt">Litter</span>`:''}
+             <button class="btn btn-sm btn-danger" style="font-size:11px" onclick="unconfirmBreeding('${b.id}')">✕ Unconfirm</button>`
           :`<button class="btn btn-sm btn-success" onclick="confirmBreeding('${b.id}')">Mark Confirmed Bred →</button>`}
         <button class="btn btn-sm btn-muted" onclick="openAddBreederModal('${b.id}')">Edit</button>
         <button class="btn btn-sm btn-danger" onclick="delBreeder('${b.id}')">Remove</button>
       </div>
     </div>
+    <div id="breed-body-${b.id}" style="display:none">
     ${b.notes?`<div style="font-size:12px;color:var(--text-mid);background:var(--gray-bg);border-radius:6px;padding:8px 10px;margin-bottom:10px">${b.notes}</div>`:''}
     ${attemptsHTML}
     ${breedDate?`
@@ -2141,7 +2149,7 @@ function renderBreeders(){
           ${b.hutAssignment?(['1','2','3','4','5'].includes(b.hutAssignment)?`Barn — Hut ${b.hutAssignment}`:b.hutAssignment):'Unassigned'}
         </div>
         <div class="di-sub">
-          <select style="width:auto;font-size:11px;padding:2px 4px;margin-top:3px" onchange="manualAssignHut('${b.id}',this.value)">
+          <select style="width:100%;min-width:160px;font-size:12px;padding:4px 6px;margin-top:4px" onchange="manualAssignHut('${b.id}',this.value)">
             <option value="">— reassign —</option>
             ${'1,2,3,4,5'.split(',').map(n=>`<option value="${n}" ${b.hutAssignment===n?'selected':''}>Barn — Hut ${n}</option>`).join('')}
               <option value="other" ${b.hutAssignment&&!['1','2','3','4','5'].includes(b.hutAssignment)?'selected':''}>Other${b.hutAssignment&&!['1','2','3','4','5'].includes(b.hutAssignment)?' ('+b.hutAssignment+')':''}…</option>
@@ -3467,7 +3475,7 @@ function renderTasks(){
     {key:'future',  label:'Future (30+ days)',tasks:tasks.filter(t=>{const d=dateDiff(today,t.due);return d!==null&&d>30;})},
   ].filter(g=>g.tasks.length);
 
-  const colHdr=`<div class="task-col-hdr"><span></span><span>Type</span><span>Task</span><span>Animal &amp; Due Date</span><span>Outcome &amp; Notes</span></div>`;
+  const colHdr=`<div class="task-col-hdr"><span></span><span>Task</span><span>Animal &amp; Due</span><span>Outcome &amp; Notes</span></div>`;
   document.getElementById('task-list-body').innerHTML=groups.map(g=>{
     const rows=g.tasks.map(t=>{
       const ts=_taskState[t.id]||{};
@@ -3477,8 +3485,8 @@ function renderTasks(){
       const rowCls=ts.done?'completed':ts.skipped?'skipped':st==='overdue'?'overdue':st==='due-soon'?'due-soon':'';
       return`<div class="task-row ${rowCls}" id="taskrow-${t.id}">
         <input type="checkbox" style="width:14px;height:14px" ${ts.done?'checked':''} onchange="toggleTask('${t.id}',this.checked)" title="Mark done">
-        <span><span class="task-type-badge ${tt.cls}">${tt.label}</span></span>
         <span>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><span class="task-type-badge ${tt.cls}">${tt.label}</span></div>
           <div class="task-name">${t.name}</div>
           ${t.note?`<div class="task-note">${t.note}</div>`:''}
         </span>
