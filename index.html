@@ -3312,9 +3312,11 @@ function buildTaskList(){
       else if(vax.anchor==='wean'&&wd)due=addDays(wd,vax.offsetDays);
       if(!due)return;
       const id=tuid(`lit-${l.id}`,`pigvax-${vax.id}`,due);
+      const effPigDue=vax.actualDate||due;
       tasks.push({id,type:'vaccine',animal:sowLabel+' litter',
-        name:vax.label+` (${vax.dose})`,due,note:vax.note,
-        litter:l.sow,filter:'vaccine'});
+        name:vax.label+(vax.dose?` (${vax.dose})`:''),due:effPigDue,note:vax.note||'',
+        litter:l.sow,filter:'vaccine',
+        vacRef:vax,vacType:'pig',vacLid:l.id,vacIdx:idx});
     });
 
     // Sow vaccines (per litter)
@@ -3324,10 +3326,12 @@ function buildTaskList(){
       if(vax.anchor==='breed'&&l.breedDate)due=addDays(l.breedDate,vax.offsetDays);
       else if(vax.anchor==='farrow'&&l.expectedFarrow)due=addDays(l.expectedFarrow,vax.offsetDays);
       if(!due)return;
+      const effSowDue=vax.actualDate||due;
       const id=tuid(`sow-${l.id}`,`sowvax-${vax.id}`,due);
       tasks.push({id,type:'sow_vax',animal:sowLabel,
-        name:vax.label+` (${vax.dose})${vax.giltsOnly?' ★ gilts only':''}`,due,note:vax.note,
-        litter:l.sow,filter:'vaccine'});
+        name:vax.label+(vax.dose?` (${vax.dose})`:'')+((vax.giltsOnly?' ★ gilts only':'')),due:effSowDue,note:vax.note||'',
+        litter:l.sow,filter:'vaccine',
+        vacRef:vax,vacType:'sow',vacLid:l.id,vacIdx:idx});
     });
 
     // Wean litter
@@ -3466,9 +3470,25 @@ function renderTasks(){
     return;
   }
 
+  // Apply due overrides and vaccine done state to task objects before grouping
+  tasks=tasks.map(t=>{
+    const ts=_taskState[t.id]||{};
+    const eff=ts.dueOverride||t.due;
+    // For vaccine tasks, sync done state FROM the vaccine record
+    let isDone=ts.done||false;
+    if(t.vacRef){isDone=t.vacRef.done||false;}
+    return {...t, due:eff, _done:isDone, _ts:ts};
+  });
+  // Re-sort after override applied
+  tasks.sort((a,b)=>{
+    const aOver=a.due<today,bOver=b.due<today;
+    if(aOver&&!bOver)return -1;if(!aOver&&bOver)return 1;
+    return a.due.localeCompare(b.due);
+  });
+
   // Group by: Overdue / Today / This Week / This Month / Future
   const groups=[
-    {key:'overdue', label:'Overdue', tasks:tasks.filter(t=>t.due<today&&!_taskState[t.id]?.skipped)},
+    {key:'overdue', label:'Overdue', tasks:tasks.filter(t=>t.due<today&&!t._ts.skipped&&!t._done)},
     {key:'today',   label:'Today',   tasks:tasks.filter(t=>t.due===today)},
     {key:'week',    label:'Next 7 Days', tasks:tasks.filter(t=>{const d=dateDiff(today,t.due);return d!==null&&d>0&&d<=7;})},
     {key:'month',   label:'Next 30 Days',tasks:tasks.filter(t=>{const d=dateDiff(today,t.due);return d!==null&&d>7&&d<=30;})},
@@ -3478,13 +3498,18 @@ function renderTasks(){
   const colHdr=`<div class="task-col-hdr"><span></span><span>Task</span><span>Animal &amp; Due</span><span>Outcome &amp; Notes</span></div>`;
   document.getElementById('task-list-body').innerHTML=groups.map(g=>{
     const rows=g.tasks.map(t=>{
-      const ts=_taskState[t.id]||{};
-      const effectiveDue=ts.dueOverride||t.due;
+      const ts=t._ts||_taskState[t.id]||{};
+      const effectiveDue=t.due; // already resolved above
       const st=taskStatus(effectiveDue);
       const tt=TASK_TYPES[t.type]||{label:t.type,cls:'bg-lt'};
-      const rowCls=ts.done?'completed':ts.skipped?'skipped':st==='overdue'?'overdue':st==='due-soon'?'due-soon':'';
+      const isDone=t._done||false;
+      const rowCls=isDone?'completed':ts.skipped?'skipped':st==='overdue'?'overdue':st==='due-soon'?'due-soon':'';
+      // For vaccine tasks, checkbox writes back to the vaccine record
+      const doneOnchange=t.vacRef
+        ?`toggleVaxTask('${t.id}',this.checked,'${t.vacType}','${t.vacLid}',${t.vacIdx})`
+        :`toggleTask('${t.id}',this.checked)`;
       return`<div class="task-row ${rowCls}" id="taskrow-${t.id}">
-        <input type="checkbox" style="width:14px;height:14px" ${ts.done?'checked':''} onchange="toggleTask('${t.id}',this.checked)" title="Mark done">
+        <input type="checkbox" style="width:14px;height:14px" ${isDone?'checked':''} onchange="${doneOnchange}" title="Mark done">
         <span>
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><span class="task-type-badge ${tt.cls}">${tt.label}</span></div>
           <div class="task-name">${t.name}</div>
@@ -3497,13 +3522,14 @@ function renderTasks(){
         <span class="task-outcome-col">
           <div style="display:flex;gap:4px;margin-bottom:3px;align-items:center">
             <span style="font-size:10px;color:var(--text-light);white-space:nowrap">Due:</span>
-            <input type="date" value="${ts.dueOverride||t.due}" style="font-size:11px;padding:2px 4px;flex:1"
-              onchange="${t.isManual?`updateManualTaskDue('${t.id}',this.value)`:`setTaskDueOverride('${t.id}',this.value)`}"
+            <input type="date" value="${effectiveDue}" style="font-size:11px;padding:2px 4px;flex:1"
+              onchange="${t.vacRef?`setVaxTaskDate('${t.id}',this.value,'${t.vacType}','${t.vacLid}',${t.vacIdx})`:t.isManual?`updateManualTaskDue('${t.id}',this.value)`:`setTaskDueOverride('${t.id}',this.value)`}"
               title="Change due date">
           </div>
           <div style="display:flex;gap:4px;margin-bottom:3px;align-items:center">
             <span style="font-size:10px;color:var(--text-light);white-space:nowrap">Done:</span>
-            <input type="date" value="${ts.completedDate||''}" style="font-size:11px;padding:2px 4px;flex:1" placeholder="date" onchange="setTaskDate('${t.id}',this.value)">
+            <input type="date" value="${t.vacRef?t.vacRef.actualDate||'':ts.completedDate||''}" style="font-size:11px;padding:2px 4px;flex:1" placeholder="date"
+              onchange="${t.vacRef?`setVaxActualDate('${t.vacType}','${t.vacLid}',${t.vacIdx},this.value)`:`setTaskDate('${t.id}',this.value)`}">
           </div>
           <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-mid);cursor:pointer;white-space:nowrap;margin-bottom:3px">
             <input type="checkbox" ${ts.skipped?'checked':''} style="width:12px;height:12px" onchange="skipTask('${t.id}',this.checked)">
@@ -3526,6 +3552,43 @@ function renderTasks(){
     </div>`;
   }).join('');
 }
+
+function toggleVaxTask(taskId, checked, vacType, lid, idx){
+  // Write done state to the vaccine record itself
+  if(vacType==='pig')upPV(lid,idx,'done',checked);
+  else upSV(lid,idx,'done',checked);
+  // Also keep _taskState in sync for skipped/notes
+  if(!_taskState[taskId])_taskState[taskId]={};
+  _taskState[taskId].done=checked;
+  if(checked&&!_taskState[taskId].completedDate)
+    _taskState[taskId].completedDate=new Date().toISOString().split('T')[0];
+  saveTaskState();
+  // Re-render vaccine tab if open
+  const l=getL(lid);
+  if(l){if(vacType==='pig')renderPigVax(l);else renderSowVax(l);}
+  renderTasks();
+}
+
+function setVaxTaskDate(taskId, val, vacType, lid, idx){
+  // Write override date to vax.actualDate so it persists and shows in vaccine tab
+  if(vacType==='pig')upPV(lid,idx,'actualDate',val);
+  else upSV(lid,idx,'actualDate',val);
+  // Clear any old _taskState override since vax.actualDate is now the source
+  if(_taskState[taskId])delete _taskState[taskId].dueOverride;
+  saveTaskState();
+  const l=getL(lid);
+  if(l){if(vacType==='pig')renderPigVax(l);else renderSowVax(l);}
+  renderTasks();
+}
+
+function setVaxActualDate(vacType, lid, idx, val){
+  if(vacType==='pig')upPV(lid,idx,'actualDate',val);
+  else upSV(lid,idx,'actualDate',val);
+  const l=getL(lid);
+  if(l){if(vacType==='pig')renderPigVax(l);else renderSowVax(l);}
+  renderTasks();
+}
+
 
 function toggleTask(id,checked){
   if(!_taskState[id])_taskState[id]={};
