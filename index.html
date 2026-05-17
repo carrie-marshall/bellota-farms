@@ -3440,6 +3440,14 @@ function taskStatus(due){
 }
 
 function renderTasks(){
+  try{_renderTasks();}
+  catch(e){
+    console.error('renderTasks error:',e);
+    const body=document.getElementById('task-list-body');
+    if(body)body.innerHTML=`<div class="estate" style="background:#fff5f5;border:2px solid var(--red);border-radius:8px;padding:16px"><h3 style="color:var(--red)">Task List Error</h3><p style="font-size:12px">${e.message}</p></div>`;
+  }
+}
+function _renderTasks(){
   const filter=document.getElementById('task-filter')?.value||'all';
   const today=new Date().toISOString().split('T')[0];
   let tasks=buildTaskList();
@@ -3473,17 +3481,24 @@ function renderTasks(){
   // Apply due overrides and vaccine done state to task objects before grouping
   tasks=tasks.map(t=>{
     const ts=_taskState[t.id]||{};
-    const eff=ts.dueOverride||t.due;
+    // For vaccine tasks: store vax metadata in _taskState so smart handlers can find it
+    if(t.vacRef&&t.vacType){
+      if(!_taskState[t.id])_taskState[t.id]={};
+      _taskState[t.id].vacType=t.vacType;
+      _taskState[t.id].vacLid=t.vacLid;
+      _taskState[t.id].vacIdx=t.vacIdx;
+    }
+    const eff=(ts.dueOverride)||(t.vacRef&&t.vacRef.actualDate?t.vacRef.actualDate:t.due)||t.due;
     // For vaccine tasks, sync done state FROM the vaccine record
     let isDone=ts.done||false;
-    if(t.vacRef){isDone=t.vacRef.done||false;}
-    return {...t, due:eff, _done:isDone, _ts:ts};
+    if(t.vacRef){isDone=!!(t.vacRef.done);}
+    return {...t, due:eff||t.due, _done:isDone, _ts:_taskState[t.id]||ts};
   });
   // Re-sort after override applied
   tasks.sort((a,b)=>{
     const aOver=a.due<today,bOver=b.due<today;
     if(aOver&&!bOver)return -1;if(!aOver&&bOver)return 1;
-    return a.due.localeCompare(b.due);
+    return (a.due||'').localeCompare(b.due||'');
   });
 
   // Group by: Overdue / Today / This Week / This Month / Future
@@ -3504,12 +3519,8 @@ function renderTasks(){
       const tt=TASK_TYPES[t.type]||{label:t.type,cls:'bg-lt'};
       const isDone=t._done||false;
       const rowCls=isDone?'completed':ts.skipped?'skipped':st==='overdue'?'overdue':st==='due-soon'?'due-soon':'';
-      // For vaccine tasks, checkbox writes back to the vaccine record
-      const doneOnchange=t.vacRef
-        ?`toggleVaxTask('${t.id}',this.checked,'${t.vacType}','${t.vacLid}',${t.vacIdx})`
-        :`toggleTask('${t.id}',this.checked)`;
       return`<div class="task-row ${rowCls}" id="taskrow-${t.id}">
-        <input type="checkbox" style="width:14px;height:14px" ${isDone?'checked':''} onchange="${doneOnchange}" title="Mark done">
+        <input type="checkbox" style="width:14px;height:14px" ${isDone?'checked':''} onchange="toggleTaskSmart('${t.id}',this.checked)" title="Mark done">
         <span>
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><span class="task-type-badge ${tt.cls}">${tt.label}</span></div>
           <div class="task-name">${t.name}</div>
@@ -3523,13 +3534,13 @@ function renderTasks(){
           <div style="display:flex;gap:4px;margin-bottom:3px;align-items:center">
             <span style="font-size:10px;color:var(--text-light);white-space:nowrap">Due:</span>
             <input type="date" value="${effectiveDue}" style="font-size:11px;padding:2px 4px;flex:1"
-              onchange="${t.vacRef?`setVaxTaskDate('${t.id}',this.value,'${t.vacType}','${t.vacLid}',${t.vacIdx})`:t.isManual?`updateManualTaskDue('${t.id}',this.value)`:`setTaskDueOverride('${t.id}',this.value)`}"
+              onchange="setTaskDueSmart('${t.id}',this.value)"
               title="Change due date">
           </div>
           <div style="display:flex;gap:4px;margin-bottom:3px;align-items:center">
             <span style="font-size:10px;color:var(--text-light);white-space:nowrap">Done:</span>
-            <input type="date" value="${t.vacRef?t.vacRef.actualDate||'':ts.completedDate||''}" style="font-size:11px;padding:2px 4px;flex:1" placeholder="date"
-              onchange="${t.vacRef?`setVaxActualDate('${t.vacType}','${t.vacLid}',${t.vacIdx},this.value)`:`setTaskDate('${t.id}',this.value)`}">
+            <input type="date" value="${ts.completedDate||''}" style="font-size:11px;padding:2px 4px;flex:1" placeholder="date"
+              onchange="setTaskDate('${t.id}',this.value)">
           </div>
           <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-mid);cursor:pointer;white-space:nowrap;margin-bottom:3px">
             <input type="checkbox" ${ts.skipped?'checked':''} style="width:12px;height:12px" onchange="skipTask('${t.id}',this.checked)">
@@ -3552,6 +3563,39 @@ function renderTasks(){
     </div>`;
   }).join('');
 }
+
+// Smart task toggle — handles both vaccine and regular tasks
+function toggleTaskSmart(id, checked){
+  const ts=_taskState[id]||{};
+  // Decode vax info from task state if stored
+  if(ts.vacType&&ts.vacLid!==undefined&&ts.vacIdx!==undefined){
+    if(ts.vacType==='pig')upPV(ts.vacLid,ts.vacIdx,'done',checked);
+    else upSV(ts.vacLid,ts.vacIdx,'done',checked);
+    const l=getL(ts.vacLid);
+    if(l){if(ts.vacType==='pig')renderPigVax(l);else renderSowVax(l);}
+  }
+  toggleTask(id,checked);
+}
+
+// Smart due date change — handles vaccine override, manual, and regular tasks
+function setTaskDueSmart(id, val){
+  const ts=_taskState[id]||{};
+  if(ts.vacType&&ts.vacLid!==undefined&&ts.vacIdx!==undefined){
+    // Write to vax.actualDate so vaccine tab reflects it
+    if(ts.vacType==='pig')upPV(ts.vacLid,ts.vacIdx,'actualDate',val);
+    else upSV(ts.vacLid,ts.vacIdx,'actualDate',val);
+    const l=getL(ts.vacLid);
+    if(l){if(ts.vacType==='pig')renderPigVax(l);else renderSowVax(l);}
+    // Store override so task re-sorts correctly
+    if(!_taskState[id])_taskState[id]={};
+    _taskState[id].dueOverride=val;
+    saveTaskState();renderTasks();
+    return;
+  }
+  if(ts.isManual){updateManualTaskDue(id,val);return;}
+  setTaskDueOverride(id,val);
+}
+
 
 function toggleVaxTask(taskId, checked, vacType, lid, idx){
   // Write done state to the vaccine record itself
