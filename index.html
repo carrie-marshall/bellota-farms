@@ -3305,11 +3305,7 @@ function buildTaskList(){
     const sowLabel=`${l.sow}${l.sowTag?' ('+l.sowTag+')':''}`;
 
     // Piglet vaccines (per litter)
-    (l.pigVax||[]).forEach(vax=>{
-      if(vax.done||l.pigVaxComplete)return;
-      let due='';
-      if(vax.anchor==='birth'&&farrow)due=addDays(farrow,vax.offsetDays);
-      else if(vax.anchor==='wean'&&wd)due=addDays(wd,vax.offsetDays);
+    (l.pigVax||[]).forEach((vax,idx)=>{
       if(!due)return;
       const id=tuid(`lit-${l.id}`,`pigvax-${vax.id}`,due);
       const effPigDue=vax.actualDate||due;
@@ -3320,11 +3316,7 @@ function buildTaskList(){
     });
 
     // Sow vaccines (per litter)
-    (l.sowVax||[]).forEach(vax=>{
-      if(vax.done||l.sowVaxComplete)return;
-      let due='';
-      if(vax.anchor==='breed'&&l.breedDate)due=addDays(l.breedDate,vax.offsetDays);
-      else if(vax.anchor==='farrow'&&l.expectedFarrow)due=addDays(l.expectedFarrow,vax.offsetDays);
+    (l.sowVax||[]).forEach((vax,idx)=>{
       if(!due)return;
       const effSowDue=vax.actualDate||due;
       const id=tuid(`sow-${l.id}`,`sowvax-${vax.id}`,due);
