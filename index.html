@@ -546,6 +546,7 @@ input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--
     <div class="fgrp"><label>Sow Name / ID *</label><input type="text" id="ab-sow" placeholder="e.g. Blanca"></div>
     <div class="fgrp"><label>Sow Tag #</label><input type="text" id="ab-tag" placeholder="x906260"></div>
     <div class="fgrp"><label>Parity</label><input type="number" id="ab-parity" min="1" placeholder="1"></div>
+    <div class="fgrp fg-full"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="ab-unknown-parity" style="width:15px;height:15px"> Unknown parity — treat as parity 2+ (skips first-parity-only vaccines)</label></div>
     <div class="fgrp"><label>Last Known Estrus</label><input type="date" id="ab-estrus"></div>
     <div class="fgrp"><label>Sire (Father)</label><input type="text" id="ab-sire" placeholder="e.g. TX30"></div>
     <div class="fgrp"><label>Dam (Mother)</label><input type="text" id="ab-dam" placeholder="e.g. La Madre"></div>
@@ -1521,12 +1522,17 @@ function renderSowVax(l){
   const tb=document.getElementById(`svb-${l.id}`);if(!tb)return;
   if(!l.sowVax||l.sowVax.length!==SOW_VAXS.length){l.sowVax=SOW_VAXS.map(v=>{const ex=(l.sowVax||[]).find(e=>e.id===v.id);return ex?{...v,...ex}:{...v,done:false,actualDate:'',actualNotes:''};});save();}
   tb.innerHTML='';
+  const _sowBr=breeders.find(b=>b.sow===l.sow&&(b.litterId===l.id||!b.litterId));
+  const _parityNum=parseInt(l.parity)||0;
+  const _isGilt=_parityNum===1&&!(_sowBr&&_sowBr.unknownParity);
   l.sowVax.forEach((vax,idx)=>{
+    const _skipGilt=vax.giltsOnly&&!_isGilt;
     let exp='';if(vax.anchor==='breed'&&l.breedDate)exp=addDays(l.breedDate,vax.offsetDays);else if(vax.anchor==='farrow'&&getLitterFarrow(l))exp=addDays(getLitterFarrow(l),vax.offsetDays);
     const tr=document.createElement('tr');
     if(vax.done)tr.classList.add('vdone');
-    if(!vax.done&&l.sowVaxComplete){tr.style.opacity='0.35';tr.style.pointerEvents='none';}
-    if(vax.supp&&!l.sowVaxComplete)tr.style.background='rgba(245,160,35,.05)';
+    if(_skipGilt&&!vax.done){tr.style.opacity='0.25';tr.style.pointerEvents='none';tr.title='First-parity gilts only — not applicable for this sow';}
+    else if(!vax.done&&l.sowVaxComplete){tr.style.opacity='0.35';tr.style.pointerEvents='none';}
+    if(vax.supp&&!l.sowVaxComplete&&!_skipGilt)tr.style.background='rgba(245,160,35,.05)';
     tr.innerHTML=`<td style="text-align:center"><input type="checkbox" ${vax.done?'checked':''} onchange="upSV('${l.id}',${idx},'done',this.checked);renderSowVax(getL('${l.id}'))"></td><td class="vname" style="font-weight:500;white-space:nowrap">${vax.supp?'[SUPP] ':''}${vax.label}</td><td style="font-family:'DM Mono',monospace;font-size:11px">${vax.dose}</td><td style="font-size:11px;color:${vax.giltsOnly?'var(--orange)':'var(--text-mid)'}">${vax.giltsOnly?'★ First parity gilts':'All females'}</td><td style="font-family:'DM Mono',monospace;font-size:11px">${exp?fmtDate(exp):`<span style="color:var(--text-light)">Set ${vax.anchor} date in Litter Info</span>`}</td><td><input type="date" value="${vax.actualDate||''}" onchange="upSV('${l.id}',${idx},'actualDate',this.value)"></td><td><input type="text" value="${vax.actualNotes||''}" placeholder="${vax.note}" onchange="upSV('${l.id}',${idx},'actualNotes',this.value)"></td>`;
     tb.appendChild(tr);
   });
@@ -1870,6 +1876,7 @@ function openAddBreederModal(editId){
       document.getElementById('ab-sire').value=b.sire||'';
       document.getElementById('ab-dam').value=b.dam||'';
       document.getElementById('ab-neveronsite').checked=b.neverOnsite||false;
+      const upEl=document.getElementById('ab-unknown-parity');if(upEl)upEl.checked=b.unknownParity||false;
       _abAttempts=(b.attempts||[]).map(a=>({...a}));
     }
   } else {
@@ -1909,6 +1916,7 @@ function saveBreeder(){
     sow,
     tag:document.getElementById('ab-tag').value.trim(),
     parity:document.getElementById('ab-parity').value,
+    unknownParity:document.getElementById('ab-unknown-parity')?.checked||false,
     lastEstrus:document.getElementById('ab-estrus').value,
     notes:document.getElementById('ab-notes').value.trim(),
     sire:document.getElementById('ab-sire').value.trim(),
@@ -3303,6 +3311,8 @@ function buildTaskList(){
     const farrow=getLitterFarrow(l);
     const wd=getWeanDate(l);
     const sowLabel=`${l.sow}${l.sowTag?' ('+l.sowTag+')':''}`;
+    const farrowLabel=l.litterName||`${l.sow}${farrow?' — '+fmtDate(farrow):''}`;
+    const litterBadge='<span style="display:inline-block;font-size:9px;font-weight:700;background:var(--blue-pale);color:var(--blue-dark);border:1px solid var(--blue-light);border-radius:3px;padding:1px 5px;margin-left:4px">LITTER</span>';
 
     // Piglet vaccines (per litter)
     (l.pigVax||[]).forEach((vax,idx)=>{
@@ -3313,15 +3323,20 @@ function buildTaskList(){
       if(!due)return;
       const id=tuid(`lit-${l.id}`,`pigvax-${vax.id}`,due);
       const effPigDue=vax.actualDate||due;
-      tasks.push({id,type:'vaccine',animal:sowLabel+' litter',
+      tasks.push({id,type:'vaccine',animal:farrowLabel,
         name:vax.label+(vax.dose?` (${vax.dose})`:''),due:effPigDue,note:vax.note||'',
-        litter:l.sow,filter:'vaccine',
+        litter:l.sow,filter:'vaccine',isLitterTask:true,
         vacRef:vax,vacType:'pig',vacLid:l.id,vacIdx:idx});
     });
 
     // Sow vaccines (per litter)
+    // Determine if this sow is a first-parity gilt for vaccine filtering
+    const _brForVax=breeders.find(b=>b.sow===l.sow&&(b.litterId===l.id||!b.litterId));
+    const _parityForVax=parseInt(l.parity)||0;
+    const _sowIsGilt=_parityForVax===1&&!(_brForVax&&_brForVax.unknownParity);
     (l.sowVax||[]).forEach((vax,idx)=>{
       if(vax.done||l.sowVaxComplete)return;
+      if(vax.giltsOnly&&!_sowIsGilt)return; // skip gilt-only vaccines for parity 2+ sows
       let due='';
       if(vax.anchor==='breed'&&l.breedDate)due=addDays(l.breedDate,vax.offsetDays);
       else if(vax.anchor==='farrow'&&getLitterFarrow(l))due=addDays(getLitterFarrow(l),vax.offsetDays);
@@ -3331,14 +3346,14 @@ function buildTaskList(){
       const id=tuid(`sow-${l.id}`,`sowvax-${vax.id}`,due);
       tasks.push({id,type:'sow_vax',animal:sowLabel,
         name:vax.label+(vax.dose?` (${vax.dose})`:'')+((vax.giltsOnly?' ★ gilts only':'')),due:effSowDue,note:vax.note||'',
-        litter:l.sow,filter:'vaccine',
+        litter:l.sow,filter:'vaccine',isLitterTask:false,
         vacRef:vax,vacType:'sow',vacLid:l.id,vacIdx:idx});
     });
 
     // Wean litter
     if(wd&&wd>=today){
       const id=tuid(`lit-${l.id}`,'wean',wd);
-      tasks.push({id,type:'wean',animal:sowLabel+' litter',
+      tasks.push({id,type:'wean',animal:farrowLabel,isLitterTask:true,
         name:'Wean litter',due:wd,note:'Separate sow from piglets',
         litter:l.sow,filter:'health'});
     }
@@ -3349,7 +3364,7 @@ function buildTaskList(){
       if(needsNotch.length){
         const due=addDays(farrow,3);
         const id=tuid(`lit-${l.id}`,'earnotch',due);
-        tasks.push({id,type:'ear_notch',animal:sowLabel+' litter',
+        tasks.push({id,type:'ear_notch',animal:farrowLabel,isLitterTask:true,
           name:`Ear notch ${needsNotch.length} piglet${needsNotch.length>1?'s':''} (not yet done)`,
           due,note:'Days 3–5 post-birth recommended',litter:l.sow,filter:'health'});
       }
@@ -3528,15 +3543,15 @@ function _renderTasks(){
           ${t.note?`<div class="task-note">${t.note}</div>`:''}
         </span>
         <span>
-          <div class="task-animal">${t.animal}</div>
+          <div class="task-animal">${t.animal}${t.isLitterTask?litterBadge:''}</div>
           <div class="task-due ${ts.skipped?'skipped-due':st==='overdue'?'overdue':st==='due-soon'?'soon':'ok'}" style="margin-top:3px">${fmtDate(effectiveDue)}${!ts.skipped&&st==='overdue'?` <span style="font-size:10px">(${Math.abs(dateDiff(today,t.due))}d ago)</span>`:!ts.skipped&&st==='due-soon'?` <span style="font-size:10px">(${dateDiff(today,t.due)}d)</span>`:''}</div>
         </span>
         <span class="task-outcome-col">
           <div style="display:flex;gap:4px;margin-bottom:3px;align-items:center">
             <span style="font-size:10px;color:var(--text-light);white-space:nowrap">Due:</span>
             <input type="date" value="${effectiveDue}" style="font-size:11px;padding:2px 4px;flex:1"
-              onchange="setTaskDueSmart('${t.id}',this.value)"
-              title="Change due date">
+              onblur="setTaskDueSmart('${t.id}',this.value)"
+              title="Change due date — edit then click away to save">
           </div>
           <div style="display:flex;gap:4px;margin-bottom:3px;align-items:center">
             <span style="font-size:10px;color:var(--text-light);white-space:nowrap">Done:</span>
