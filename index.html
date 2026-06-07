@@ -1109,7 +1109,7 @@ function buildCard(l){
       <button class="btn btn-sm btn-danger" style="margin-left:6px;padding:2px 8px;font-size:11px" onclick="event.stopPropagation();delL('${l.id}')">Delete</button>
     </div>
   </div>
-  <div class="lbody" data-id="${l.id}">
+  <div class="lbody" id="lbody-${l.id}" data-id="${l.id}">
     <div class="tabs" id="tabs-${l.id}"></div>
     <div id="panels-${l.id}"></div>
     <div class="expbar">
@@ -1617,9 +1617,9 @@ function renderEvs(l){
 // ─────────────────────────────────────────────────────────────────────────────
 // TOGGLE / TABS / MUTATIONS
 // ─────────────────────────────────────────────────────────────────────────────
-function toggle(lid){const b=document.querySelector(`.lbody[data-id="${lid}"]`);if(b)b.classList.toggle('open');}
+function toggle(lid){const b=document.getElementById('lbody-'+lid)||document.querySelector(`.lbody[data-id="${lid}"]`);if(b)b.classList.toggle('open');}
 function activateTab(btn,lid,tab){
-  const b=document.querySelector(`.lbody[data-id="${lid}"]`);if(!b)return;
+  const b=document.getElementById('lbody-'+lid)||document.querySelector(`.lbody[data-id="${lid}"]`);if(!b)return;
   b.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));
   b.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));
   btn.classList.add('active');
@@ -1797,7 +1797,7 @@ function updateCp(lid,cpid,field,val){
   const cp=l.weightCheckpoints.find(c=>c.id===cpid);if(!cp)return;
   cp[field]=val;save();
   // Update tab button label when label or date changes
-  const btn=document.querySelector(`.lbody[data-id="${lid}"] .tab-btn[data-tab="wcp-${cpid}"]`);
+  const btn=(document.getElementById('lbody-'+lid)||document.querySelector(`.lbody[data-id="${lid}"]`))?.querySelector(`.tab-btn[data-tab="wcp-${cpid}"]`);
   if(btn){
     const lbl=cp.label||(cp.targetDate?fmtDate(cp.targetDate):'Checkpoint');
     btn.textContent=lbl;
@@ -3344,6 +3344,7 @@ function buildTaskList(){
 
   // ── LITTER TASKS ──────────────────────────────────────────────────────────
   litters.forEach(l=>{
+    try{
     const farrow=getLitterFarrow(l);
     const wd=getWeanDate(l);
     const sowLabel=`${l.sow}${l.sowTag?' ('+l.sowTag+')':''}`;
@@ -3423,6 +3424,7 @@ function buildTaskList(){
       });
     }
 
+    }catch(e){console.error('buildTaskList litter error '+l.sow+':',e.message);}
   });
 
   // ── BREEDING TRACKER TASKS ─────────────────────────────────────────────────
