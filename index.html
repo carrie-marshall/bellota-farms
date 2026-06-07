@@ -2740,81 +2740,181 @@ function openExportModal(prefillLid){
   openModal('exp-modal');
 }
 function expToggleAll(checked){document.querySelectorAll('.exp-litter-cb').forEach(cb=>cb.checked=checked);}
+// Build clean CSV rows for a single litter
+function buildLitterRows(l,inc){
+  const{total,bornAlive,stillMum,diedPost,alive}=litTallies(l);
+  const wd=getWeanDate(l);
+  const farrow=getLitterFarrow(l);
+  const rows=[];
+  const hr=(label)=>[csvR(['']),csvR([`── ${label} ──`])];
+
+  // ── LITTER HEADER ──────────────────────────────────────────────────────────
+  rows.push(csvR([`LITTER RECORD — ${l.litterName||l.sow}${farrow?' — Farrowed '+fmtDate(farrow):''}${wd?' — Weaned '+fmtDate(wd):''}` ]));
+  if(inc.header){
+    rows.push(csvR(['Field','Value','Field','Value']));
+    rows.push(csvR(['Sow',l.sow,'Sow Tag',l.sowTag||'—']));
+    rows.push(csvR(['Litter Name',l.litterName||'—','Boar',l.boar||'—']));
+    rows.push(csvR(['Parity',l.parity||'—','Prop 12',l.prop12==='compliant'?'✓ Compliant':l.prop12==='not_compliant'?'✗ Not Compliant':'Not Set']));
+    rows.push(csvR(['Farrow Date',farrow?fmtDate(farrow):'—','Farrow Type',l.farrowIsActual?'Actual':'Estimated']));
+    rows.push(csvR(['Breed Date',l.breedDate?fmtDate(l.breedDate):'—','Expected Farrow',l.expectedFarrow?fmtDate(l.expectedFarrow):'—']));
+    rows.push(csvR(['Est. Wean Date',l.estimatedWeanDate?fmtDate(l.estimatedWeanDate):'—','Actual Wean Date',l.actualWeanDate?fmtDate(l.actualWeanDate):'—']));
+    rows.push(csvR(['Farrowing Hut',(()=>{const br=breeders.find(b=>b.litterId===l.id);const ha=br?br.hutAssignment:null;return ha?('Hut '+ha):(l.stall||'—');})(),'Sow Weight',l.sowWt?l.sowWt+' lb':'—']));
+    rows.push(csvR(['','','','']));
+    rows.push(csvR(['COUNTS','','','']));
+    rows.push(csvR(['Total Born',total,'Born Alive',bornAlive]));
+    rows.push(csvR(['Stillborn / Mummified',stillMum,'Died Post-Birth',diedPost]));
+    rows.push(csvR(['Currently Alive',alive,'','']));
+    if(l.notes)rows.push(csvR(['Notes',l.notes,'','']));
+    rows.push('');
+  }
+
+  // ── PIGLETS ────────────────────────────────────────────────────────────────
+  if(inc.birth&&l.piglets.length){
+    rows.push(...hr('PIGLET RECORD'));
+    rows.push(csvR(['#','Status','Sex','Ear Notch','Color','Birth Weight','Nipples','Castration Date','Designation','Departure Date','Departure Reason','Notes']));
+    l.piglets.forEach(p=>{
+      rows.push(csvR([
+        p.num, p.status, p.sex||'—', p.earNotch||'—', p.color||'—',
+        p.birthWeightNA?'N/A':(p.birthOz?fmtOz(p.birthOz):'Not weighed'),
+        p.nippleCount||'—', p.castrationDate?fmtDate(p.castrationDate):'—',
+        p.designation||'undecided',
+        p.departDate?fmtDate(p.departDate):'',
+        p.departReason||'', p.notes||''
+      ]));
+    });
+    // Birth litter weight
+    if(l.birthLitterWeightOz)rows.push(csvR(['','','','','','Litter Birth Wt:',fmtOz(l.birthLitterWeightOz),'','','','','']));
+    rows.push('');
+  }
+
+  // ── WEIGHT CHECKPOINTS ────────────────────────────────────────────────────
+  if(inc.weights&&l.weightCheckpoints&&l.weightCheckpoints.length){
+    rows.push(...hr('WEIGHT CHECKPOINTS'));
+    l.weightCheckpoints.forEach(cp=>{
+      rows.push(csvR([`Checkpoint: ${cp.label||'(no label)'}`, cp.targetDate?fmtDate(cp.targetDate):'No date set', 'Litter Weight:', cp.litterWeightOz?fmtOz(cp.litterWeightOz):'—']));
+      const piglets=l.piglets.filter(p=>p.status==='alive');
+      if(piglets.length){
+        rows.push(csvR(['#','Ear Notch','Sex','Color','Weight','Notes']));
+        piglets.forEach(p=>{
+          const wval=(p.weights||{})[cp.id]||'';
+          const naFlag=(p.weights||{})[cp.id+'_na'];
+          rows.push(csvR([p.num, p.earNotch||'—', p.sex||'—', p.color||'—', naFlag?'N/A':(wval?fmtOz(wval):'Not recorded'), p.notes||'']));
+        });
+      }
+      rows.push('');
+    });
+  }
+
+  // ── LOCATION LOG ──────────────────────────────────────────────────────────
+  if(inc.header&&l.locationLog&&l.locationLog.length){
+    rows.push(...hr('LOCATION HISTORY'));
+    rows.push(csvR(['Date','Location','Notes']));
+    [...l.locationLog].sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
+      rows.push(csvR([e.date?fmtDate(e.date):'', e.location||'', e.notes||'']));
+    });
+    rows.push('');
+  }
+
+  // ── PIGLET VACCINES ───────────────────────────────────────────────────────
+  if(inc.pigvax&&l.pigVax&&l.pigVax.length){
+    rows.push(...hr('PIGLET VACCINES'));
+    rows.push(csvR(['Vaccine','Dose','Scheduled Date','Actual Date','Done','Notes']));
+    (l.pigVax||[]).forEach(v=>{
+      let ex='';
+      if(v.anchor==='birth'&&farrow)ex=addDays(farrow,v.offsetDays);
+      else if(v.anchor==='wean'&&wd)ex=addDays(wd,v.offsetDays);
+      rows.push(csvR([v.label,v.dose,ex?fmtDate(ex):'—',v.actualDate?fmtDate(v.actualDate):'—',v.done?'✓ Done':'Pending',v.actualNotes||v.note||'']));
+    });
+    if(l.pigVaxComplete)rows.push(csvR(['','','','','Marked Complete','']));
+    rows.push('');
+  }
+
+  // ── SOW VACCINES ──────────────────────────────────────────────────────────
+  if(inc.sowvax&&l.sowVax&&l.sowVax.length){
+    rows.push(...hr('SOW VACCINES & SUPPLEMENTS'));
+    rows.push(csvR(['Item','Type','Dose','Applies To','Scheduled Date','Actual Date','Done','Notes']));
+    (l.sowVax||[]).forEach(v=>{
+      let ex='';
+      if(v.anchor==='breed'&&l.breedDate)ex=addDays(l.breedDate,v.offsetDays);
+      else if(v.anchor==='farrow'&&farrow)ex=addDays(farrow,v.offsetDays);
+      else if(v.anchor==='wean'&&wd)ex=addDays(wd,v.offsetDays);
+      rows.push(csvR([v.label,v.supp?'Supplement':'Vaccine',v.dose,v.giltsOnly?'First parity only':'All',ex?fmtDate(ex):'—',v.actualDate?fmtDate(v.actualDate):'—',v.done?'✓ Done':'Pending',v.actualNotes||v.note||'']));
+    });
+    if(l.sowVaxComplete)rows.push(csvR(['','','','','','','Marked Complete','']));
+    rows.push('');
+  }
+
+  // ── HEALTH EVENTS ─────────────────────────────────────────────────────────
+  if(inc.events&&l.events&&l.events.length){
+    rows.push(...hr('HEALTH EVENTS'));
+    rows.push(csvR(['Date','Event','Dose','Notes']));
+    l.events.forEach(e=>rows.push(csvR([e.date?fmtDate(e.date):'',e.name||'',e.dose||'',e.notes||''])));
+    rows.push('');
+  }
+
+  return rows;
+}
+
 function runExport(){
   const selIds=new Set([...document.querySelectorAll('.exp-litter-cb:checked')].map(cb=>cb.value));
   const selLitters=litters.filter(l=>selIds.has(l.id));
+  if(!selLitters.length){toast('Select at least one litter to export');return;}
   const inc={header:document.getElementById('exp-s-header').checked,birth:document.getElementById('exp-s-birth').checked,weights:document.getElementById('exp-s-weights').checked,pigvax:document.getElementById('exp-s-pigvax').checked,sowvax:document.getElementById('exp-s-sowvax').checked,events:document.getElementById('exp-s-events').checked,breeding:document.getElementById('exp-s-breeding').checked,season:document.getElementById('exp-s-season').checked};
-  const rows=[];
-  rows.push(csvR(['BELLOTA FARMS — Litter Records Export']));
-  rows.push(csvR(['Exported',new Date().toLocaleDateString()]));rows.push('');
-  selLitters.forEach(l=>{
-    const{total,bornAlive,stillMum,diedPost,alive}=litTallies(l);
-    const wd=getWeanDate(l);
-    rows.push(csvR([`=== LITTER: ${l.sow} — ${l.date||'date unknown'} ===`]));
-    if(inc.header){
-      rows.push(csvR(['Sow',l.sow,'Tag',l.sowTag||'','Boar',l.boar||'','Parity',l.parity||'']));
-      rows.push(csvR(['Farrow Date',l.date||'','Wean Date',wd,'Breed Date',l.breedDate||'','Expected Farrow',l.expectedFarrow||'','Prop 12',l.prop12==='compliant'?'Compliant':l.prop12==='not_compliant'?'Not Compliant':'Not Set']));
-      rows.push(csvR(['Stall',l.stall||'','Moved In',l.movedIn||'','Moved Out',l.movedOut||'']));
-      rows.push(csvR(['Sow Wt',l.sowWt||'','Gestation',l.gestation||'','Duration',calcDur(l.timeFirst,l.timeLast)]));
-      rows.push(csvR(['Total Born',total,'Born Alive',bornAlive,'Stillborn/Mum',stillMum,'Died Post',diedPost,'Alive',alive]));
-      rows.push(csvR(['Pig Vax Complete',l.pigVaxComplete?'Yes':'No',l.pigVaxCompleteDate||'']));
-      rows.push(csvR(['Sow Vax Complete',l.sowVaxComplete?'Yes':'No',l.sowVaxCompleteDate||'']));
-      rows.push(csvR(['Interventions',l.interventions||'']));rows.push(csvR(['Notes',l.notes||'']));rows.push('');
-    }
-    if(inc.birth){
-      rows.push(csvR(['BIRTH RECORD']));
-      rows.push(csvR(['#','Status','Sex','Time Born','Birth Oz','Birth Wt','Color','Ear Notch','Nipples','Castration','Designation','Notes']));
-      l.piglets.forEach(p=>rows.push(csvR([p.num,p.status,p.sex,p.birthOz||'',p.birthOz?fmtOz(p.birthOz):'',p.color||'',p.earNotch||'',p.nippleCount||'',p.castrationDate||'',p.designation||'undecided',p.notes||''])));
-      rows.push('');
-    }
-    if(inc.weights&&l.weightCheckpoints&&l.weightCheckpoints.length){
-      rows.push(csvR(['WEIGHT CHECKPOINTS']));
-      l.weightCheckpoints.forEach(cp=>{
-        rows.push(csvR([`Weight Checkpoint: ${cp.label||''}`,cp.targetDate?fmtDate(cp.targetDate):'','Litter Weight:',cp.litterWeightOz?fmtOz(cp.litterWeightOz):'—']));
-        rows.push(csvR(['#','Sex','Color','Ear Notch','Status','Birth Wt (oz)','Weight (oz)','Wt Display','Gain (oz)','% Gain','Notes']));
-        l.piglets.forEach(p=>{const wval=(p.weights||{})[cp.id]||'';const g=gain(p.birthOz,wval);rows.push(csvR([p.num,p.sex||'',p.color||'',p.earNotch||'',p.status,p.birthOz||'',wval,wval?fmtOz(wval):'',g.oz!==null?g.oz+' oz':'',g.pct!==null?g.pct+'%':'',p.notes||'']));});
-        rows.push('');
-      });
-    }
-    if(inc.pigvax){
-      rows.push(csvR(['PIGLET VACCINES']));rows.push(csvR(['Vaccine','Dose','Expected','Actual','Done','Notes']));
-      (l.pigVax||[]).forEach(v=>{let ex='';if(v.anchor==='birth'&&getLitterFarrow(l))ex=addDays(getLitterFarrow(l),v.offsetDays);else if(v.anchor==='wean'&&wd)ex=addDays(wd,v.offsetDays);rows.push(csvR([v.label,v.dose,ex,v.actualDate||'',v.done?'Yes':'No',v.actualNotes||v.note]));});
-      rows.push('');
-    }
-    if(inc.sowvax){
-      rows.push(csvR(['SOW VACCINES & SUPPLEMENTS']));rows.push(csvR(['Item','Type','Dose','Applies To','Expected','Actual','Done','Notes']));
-      (l.sowVax||[]).forEach(v=>{let ex='';if(v.anchor==='breed'&&l.breedDate)ex=addDays(l.breedDate,v.offsetDays);else if(v.anchor==='farrow'&&l.expectedFarrow)ex=addDays(l.expectedFarrow,v.offsetDays);rows.push(csvR([v.label,v.supp?'Supplement':'Vaccine',v.dose,v.giltsOnly?'First parity gilts only':'All females',ex,v.actualDate||'',v.done?'Yes':'No',v.actualNotes||v.note]));});
-      rows.push('');
-    }
-    if(inc.events&&l.events&&l.events.length){rows.push(csvR(['HEALTH EVENTS']));rows.push(csvR(['Date','Event','Dose','Notes']));l.events.forEach(e=>rows.push(csvR([e.date,e.name,e.dose,e.notes])));rows.push('');}
-    rows.push('');
-  });
+  const rows=[csvR(['BELLOTA FARMS — Litter Records']),csvR(['Exported',new Date().toLocaleDateString()]),''];
+  selLitters.forEach(l=>{rows.push(...buildLitterRows(l,inc));rows.push('');});
   if(inc.breeding&&breeders.length){
-    rows.push(csvR(['=== BREEDING TRACKER ===']));
-    rows.push(csvR(['Sow','Tag','Parity','Last Estrus','Confirmed','Hut','Final Attempt Start','Farrow Window Start','Farrow Window End','Calc Move-in','Actual Move-in','Calc Move-out','Actual Move-out','Notes']));
+    rows.push(csvR(['── BREEDING TRACKER ──']),'');
+    rows.push(csvR(['Sow','Tag','Parity','Confirmed','Hut','Breed Date','Farrow Window','Calc Move-in','Actual Move-in','Calc Move-out','Actual Move-out','Notes']));
     breeders.forEach(b=>{
       const bd=calcBreedDate(b);
       const occ=b.confirmed&&bd?getHutOccupancy(b):null;
-      rows.push(csvR([b.sow,b.tag||'',b.parity||'',b.lastEstrus||'',b.confirmed?'Yes':'No',b.hutAssignment?`Hut ${b.hutAssignment}`:'',bd,occ?occ.farrowStart:'',occ?occ.farrowEnd:'',occ?occ.calcMoveIn:'',b.actualMoveIn||'',occ?occ.calcRelease:'',b.actualMoveOut||'',b.notes||'']));
-      (b.attempts||[]).forEach((a,i)=>{rows.push(csvR([`  Attempt ${i+1}`,'','','','','','',`${a.startDate||''} – ${a.endDate||''}`,`${daysTogetherInclusive(a.startDate,a.endDate)} days`,a.boar||'','','','','']));});
+      rows.push(csvR([b.sow,b.tag||'',b.parity||'',b.confirmed?'Yes':'No',b.hutAssignment?'Hut '+b.hutAssignment:'',bd?fmtDate(bd):'',occ?fmtDate(occ.farrowStart)+' – '+fmtDate(occ.farrowEnd):'',occ?fmtDate(occ.calcMoveIn):'',b.actualMoveIn?fmtDate(b.actualMoveIn):'',occ?fmtDate(occ.calcRelease):'',b.actualMoveOut?fmtDate(b.actualMoveOut):'',b.notes||'']));
     });
     rows.push('');
   }
   if(inc.season){
     const years=[...new Set(litters.map(l=>getFarrowYear(l.date)).filter(y=>y!=='Unknown'))].sort();
     years.forEach(y=>{
-      rows.push(csvR([`=== ${y} SEASON SUMMARY ===`]));
+      rows.push(csvR(['── '+y+' SEASON SUMMARY ──']),'');
+      rows.push(csvR(['Sow','Litter Name','Boar','Farrow Date','Total','Born Alive','Stillborn/Mum','Died','Alive','Wean Date']));
       const sL=litters.filter(l=>isSeasonLitter(l,y));const oL=litters.filter(l=>l.date&&getFarrowYear(l.date)===y&&!isSeasonLitter(l,y));
-      rows.push(csvR(['Sow','Boar','Type','Farrow Date','Total','Born Alive','Stillborn/Mum','Died','Alive','Wean Date']));
-      [...sL,...oL].forEach(l=>{const{total,bornAlive,stillMum,diedPost,alive}=litTallies(l);rows.push(csvR([l.sow,l.boar||'',isSeasonLitter(l,y)?'Main Season':'Off-Season',l.date,total,bornAlive,stillMum,diedPost,alive,getWeanDate(l)]));});
-      rows.push('');rows.push(csvR(['PIGLET ROSTER — ALIVE']));rows.push(csvR(['Ear Notch','Birth Date','Sex','Color','Sow','Boar','Birth Wt','Wean Wt','Wean Date','Designation','Notes']));
-      [...sL,...oL].forEach(l=>{const wcp=(l.weightCheckpoints||[]).find(c=>c.isWean);l.piglets.filter(p=>p.status==='alive').forEach(p=>{const ww=wcp&&p.weights?p.weights[wcp.id]:'';rows.push(csvR([p.earNotch||'',l.date,p.sex||'',p.color||'',l.sow,l.boar||'',p.birthOz?fmtOz(p.birthOz):'',ww?fmtOz(ww):'',getWeanDate(l)||'',p.designation||'undecided',p.notes||'']));});});
+      [...sL,...oL].forEach(l=>{const{total,bornAlive,stillMum,diedPost,alive}=litTallies(l);rows.push(csvR([l.sow,l.litterName||'',l.boar||'',l.date?fmtDate(l.date):'',total,bornAlive,stillMum,diedPost,alive,getWeanDate(l)?fmtDate(getWeanDate(l)):'']));});
       rows.push('');
     });
   }
-  const b=new Blob([rows.join('\n')],{type:'text/csv'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`BellotaFarms_Export_${new Date().toISOString().split('T')[0]}.csv`;a.click();
-  closeModal('exp-modal');toast('Export downloaded');
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`BellotaFarms_${selLitters.length===1?(selLitters[0].litterName||selLitters[0].sow).replace(/[^a-z0-9]/gi,'_'):'Export'}_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();closeModal('exp-modal');toast('CSV downloaded');
+}
+
+function exportExcel(){
+  const selIds=new Set([...document.querySelectorAll('.exp-litter-cb:checked')].map(cb=>cb.value));
+  const selLitters=litters.filter(l=>selIds.has(l.id));
+  if(!selLitters.length){toast('Select at least one litter to export');return;}
+  if(typeof XLSX==='undefined'){toast('Excel export requires internet connection — SheetJS library not loaded');return;}
+  const inc={header:true,birth:true,weights:true,pigvax:true,sowvax:true,events:true,breeding:false,season:false};
+  const wb=XLSX.utils.book_new();
+  selLitters.forEach(l=>{
+    const rows=buildLitterRows(l,inc);
+    // Parse CSV rows back to arrays for XLSX
+    const sheetData=rows.map(r=>{
+      if(!r)return[''];
+      // Simple CSV parse — remove outer quotes and split
+      return r.split(',').map(cell=>{
+        const s=cell.trim();
+        if(s.startsWith('"')&&s.endsWith('"'))return s.slice(1,-1).replace(/""/g,'"');
+        return s;
+      });
+    });
+    const ws=XLSX.utils.aoa_to_sheet(sheetData);
+    // Set column widths
+    ws['!cols']=[{wch:22},{wch:28},{wch:22},{wch:28}];
+    const sheetName=(l.litterName||l.sow).replace(/[^a-z0-9 ]/gi,'').slice(0,31);
+    XLSX.utils.book_append_sheet(wb,ws,sheetName||'Litter');
+  });
+  XLSX.writeFile(wb,`BellotaFarms_${selLitters.length===1?(selLitters[0].litterName||selLitters[0].sow).replace(/[^a-z0-9]/gi,'_'):'Export'}_${new Date().toISOString().split('T')[0]}.xlsx`);
+  closeModal('exp-modal');toast('Excel file downloaded');
 }
 
 
