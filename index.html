@@ -3504,6 +3504,7 @@ function renderTasks(){
 function _renderTasks(){
   const filter=document.getElementById('task-filter')?.value||'all';
   const today=new Date().toISOString().split('T')[0];
+  const litterBadge='<span style="display:inline-block;font-size:9px;font-weight:700;background:var(--blue-pale);color:var(--blue-dark);border:1px solid var(--blue-light);border-radius:3px;padding:1px 5px;margin-left:4px">LITTER</span>';
   let tasks=buildTaskList();
 
   // Apply filter
