@@ -87,11 +87,8 @@ td input[type="number"]{width:66px;}td input[type="text"]{width:108px;}
 td input[type="time"]{width:82px;}td input[type="date"]{width:122px;}td select{width:82px;}
 .pnum{font-family:'DM Mono',monospace;font-size:11px;color:var(--text-light);font-weight:500;padding:0 5px;white-space:nowrap;}
 /* Gain cells */
-.gcell{display:flex;flex-direction:column;gap:2px;min-width:76px;}
 .gpct{font-family:'DM Mono',monospace;font-size:11px;padding:2px 6px;border-radius:3px;text-align:center;font-weight:600;display:inline-block;}
 .goz{font-family:'DM Mono',monospace;font-size:10px;color:var(--text-light);text-align:center;}
-.gg{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);}
-.gy{background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-bd);}
 .gr{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);}
 .gn{background:var(--gray-bg);color:var(--text-light);border:1px solid var(--border);}
 .prev-wt{font-family:'DM Mono',monospace;font-size:10px;padding:2px 4px;border-radius:3px;text-align:center;}
@@ -819,40 +816,12 @@ function gain(boz,coz){
   return{oz:+(c-b).toFixed(1),pct:+((c-b)/b*100).toFixed(1)};
 }
 // ── IBÉRICO GROWTH THRESHOLDS ─────────────────────────────────────────────────
-// Source: Daza 2001, Castellano et al. 2014 (Animal), García-Valverde et al.
-// Ibérico neonates are lighter (~1.1–1.4 kg) and gain more slowly than commercial breeds.
-// Full preweaning average: 150–200 g/day. BUT early neonatal gain is much lower:
-//   Days 1–3:  green ≥ 50 g/day (~1.8 oz), yellow ≥ 25 g/day (~0.9 oz)
-//   Days 4–7:  green ≥ 80 g/day (~2.8 oz), yellow ≥ 50 g/day (~1.8 oz)
-//   Days 8–21: green ≥ 130 g/day (~4.6 oz), yellow ≥ 90 g/day (~3.2 oz)
-//   Days 22+:  green ≥ 175 g/day (~6.2 oz), yellow ≥ 120 g/day (~4.2 oz)
-function ibericoThresholds(days){
-  if(days<=3)  return{green:50, yellow:25};
-  if(days<=7)  return{green:80, yellow:50};
-  if(days<=21) return{green:130,yellow:90};
-  return        {green:175,yellow:120};
-}
-function ibericoPct(bOz,days,adg_g){
-  if(!bOz||!days)return 0;
-  return(adg_g*days/28.3495)/parseFloat(bOz)*100;
-}
-function gcls(pct,bOz,days){
-  if(pct===null||isNaN(pct)||!days)return'gn';
-  const t=ibericoThresholds(days);
-  if(pct>=ibericoPct(bOz||35,days,t.green))return'gg';
-  if(pct>=ibericoPct(bOz||35,days,t.yellow))return'gy';
-  return'gr';
-}
-function gcell(boz,coz,days){
-  const g=gain(boz,coz);
-  if(g.pct===null)return`<div class="gcell"><span class="gpct gn">—</span></div>`;
-  return`<div class="gcell"><span class="gpct ${gcls(g.pct,boz,days)}">${g.pct}%</span><span class="goz">${fmtOz(g.oz)}</span></div>`;
-}
 function litTallies(l){
   const total=l.piglets.length;
   const stillMum=l.piglets.filter(p=>p.status==='stillborn'||p.status==='mummified').length;
   return{total,bornAlive:total-stillMum,stillMum,diedPost:l.piglets.filter(p=>p.status==='dead').length,alive:l.piglets.filter(p=>p.status==='alive').length};
 }
+
 const getWeanDate=l=>l.actualWeanDate||l.estimatedWeanDate||'';
 const isActuallyWeaned=l=>!!(l.actualWeanDate);
 const getLitterFarrow=l=>l?l.date||l.expectedFarrow||'':'';
@@ -1141,7 +1110,6 @@ function rebuildTabs(l){
       <span class="li"><span class="ld" style="background:var(--green-bg);border:1px solid var(--green-bd)"></span>On track (age-tiered)</span>
       <span class="li"><span class="ld" style="background:var(--yellow-bg);border:1px solid var(--yellow-bd)"></span>Below target</span>
       <span class="li"><span class="ld" style="background:var(--red-bg);border:1px solid var(--red-bd)"></span>Concern</span>
-      <span style="margin-left:auto;font-size:10px;color:var(--text-light);font-family:'DM Mono',monospace">Days 1–3: ≥1.8 oz/day · Days 4–7: ≥2.8 oz/day · Days 8–21: ≥4.6 oz/day · Day 22+: ≥6.2 oz/day</span>
     </div>
     <div class="tw"><table><thead><tr>
       <th>#</th><th>Status</th><th>Sex</th><th>Ear Notch</th>
@@ -1447,7 +1415,6 @@ function renderWeightCards(l,cp){
     const birthSplit=splitLbOz(p.birthOz);
     const g=gain(p.birthOz,wval);
     const statusCls=p.status==='dead'?'bg-rd':p.status==='alive'?'bg-gn':'bg-yw';
-    const gainCls=g.pct!==null?gcls(g.pct,p.birthOz,0):'';
     return`<div class="wt-card${p.status==='dead'?' wt-card-dead':''}">
       <div class="wt-card-hdr">
         <span class="wt-card-id">${p.earNotch?p.earNotch:'#'+p.num}</span>
@@ -1480,7 +1447,7 @@ function renderWeightCards(l,cp){
         </div>
         ${wval?`<div class="wt-card-row">
           <span class="wt-card-lbl">Gain</span>
-          <span class="wt-card-val ${gainCls}" style="font-weight:600">${g.oz!==null?fmtOz(g.oz):''} ${g.pct!==null?'('+g.pct+'%)':''}</span>
+          <span class="wt-card-val" style="font-weight:600">${g.oz!==null?fmtOz(g.oz)+' ('+g.pct+'%)':''}</span>
         </div>`:''}
         <div class="wt-card-row">
           <span class="wt-card-lbl">Notes</span>
