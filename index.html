@@ -1315,21 +1315,18 @@ function rebuildTabs(l){
     </div>
     <div class="stitle" style="font-size:13px;display:flex;align-items:center;justify-content:space-between">
       <span>📍 Location Log — Sow + Litter</span>
-      <span style="font-size:10px;font-weight:400;color:var(--text-light)">This is the place to log where this sow and litter are</span>
+      <button class="btn btn-sm btn-primary" onclick="openLitterLocModal('${l.id}')">Open Location Log</button>
     </div>
-    <div style="font-size:11px;background:var(--blue-pale);border:1px solid var(--blue-light);border-radius:6px;padding:8px 12px;margin-bottom:10px">
-      <strong>Add location entries here</strong> as the sow+litter move. The autocomplete suggests hut options (e.g. "Barn — Hut 1 — Closed"). These entries appear in the Herd &amp; Locations tab. After weaning, each pig gets their own location log there.
-    </div>
-    <div id="litter-loc-log-${l.id}" style="margin-bottom:10px"></div>
-    <div style="display:grid;grid-template-columns:130px 1fr 1fr auto;gap:8px;align-items:end;margin-bottom:14px">
-      <div class="fgrp"><label>Date</label><input type="date" id="litloc-date-${l.id}" value="${new Date().toISOString().split('T')[0]}"></div>
-      <div class="fgrp"><label>Location</label>
-        <input type="text" id="litloc-place-${l.id}" placeholder="e.g. Barn — Hut 1 — Closed" list="loc-datalist" autocomplete="off">
-      </div>
-      <div class="fgrp"><label>Notes</label><input type="text" id="litloc-notes-${l.id}" placeholder="Optional"></div>
-      <div class="fgrp"><label>&nbsp;</label>
-        <button class="btn btn-sm btn-success" onclick="addLitterLocEntry('${l.id}')">Add</button>
-      </div>
+    <div id="litter-loc-summary-${l.id}" style="margin-bottom:14px">
+      ${(()=>{
+        const log=l.locationLog||[];
+        if(!log.length)return '<div style="font-size:11px;color:var(--text-light);padding:6px 0">No location entries yet — click Open Location Log to add.</div>';
+        const sorted=[...log].sort((a,b)=>b.date.localeCompare(a.date));
+        const recent=sorted.slice(0,5);
+        return '<div style="font-size:11px;color:var(--text-light);margin-bottom:4px">Recent entries (click Open Location Log to add or edit):</div>'
+          +recent.map(e=>`<div style="display:flex;gap:12px;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)"><span style="font-family:'DM Mono',monospace;color:var(--text-mid);min-width:100px">${fmtDate(e.date)}</span><span style="font-weight:600">${e.location}</span>${e.notes?`<span style="color:var(--text-light)">${e.notes}</span>`:''}</div>`).join('')
+          +(sorted.length>5?`<div style="font-size:10px;color:var(--text-light);margin-top:4px">+${sorted.length-5} more — open log to see all</div>`:'');
+      })()}
     </div>
     <div class="stitle">Litter Counts (auto-calculated)</div>
     <div class="fg" style="margin-bottom:14px">
@@ -1366,7 +1363,7 @@ function rebuildTabs(l){
   renderBirthRows(l);
   (l.weightCheckpoints||[]).forEach(cp=>renderWeightCards(l,cp));
   renderPigVax(l);renderSowVax(l);renderEvs(l);
-  renderLitterLocLog(l.id);
+  refreshLitterLocSummary(l.id);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1554,9 +1551,45 @@ function renderLitterLocLog(lid){
   </div>`).join('');
 }
 
+function openLitterLocModal(lid){
+  // Open the location log modal for a litter directly from the litter record
+  const l=getL(lid);if(!l)return;
+  if(!l.locationLog)l.locationLog=[];
+  const name=l.litterName||l.sow;
+  _locEnt={ref:l, type:'litter', name};
+  document.getElementById('loc-modal-title').textContent=`Location Log — ${name}`;
+  document.getElementById('loc-new-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('loc-new-place').value='';
+  document.getElementById('loc-new-notes').value='';
+  // Hide pig-only sections
+  const depSect=document.getElementById('loc-departure-section');
+  const notesSect=document.getElementById('loc-notes-section');
+  if(depSect)depSect.style.display='none';
+  if(notesSect)notesSect.style.display='none';
+  renderLocLog();
+  refreshLocDatalist();
+  // When modal closes, refresh the litter record summary
+  const modal=document.getElementById('loc-modal');
+  if(modal)modal.dataset.onclose=`refreshLitterLocSummary('${lid}')`;
+  openModal('loc-modal');
+}
+
+function refreshLitterLocSummary(lid){
+  // Refresh the read-only location summary in the Litter Info tab after modal edit
+  const con=document.getElementById(`litter-loc-summary-${lid}`);
+  if(!con)return;
+  const l=getL(lid);if(!l)return;
+  const log=l.locationLog||[];
+  if(!log.length){con.innerHTML='<div style="font-size:11px;color:var(--text-light);padding:6px 0">No location entries yet — click Open Location Log to add.</div>';return;}
+  const sorted=[...log].sort((a,b)=>b.date.localeCompare(a.date));
+  const recent=sorted.slice(0,5);
+  con.innerHTML='<div style="font-size:11px;color:var(--text-light);margin-bottom:4px">Recent entries (click Open Location Log to add or edit):</div>'
+    +recent.map(e=>`<div style="display:flex;gap:12px;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)"><span style="font-family:'DM Mono',monospace;color:var(--text-mid);min-width:100px">${fmtDate(e.date)}</span><span style="font-weight:600">${e.location}</span>${e.notes?`<span style="color:var(--text-light)">${e.notes}</span>`:''}</div>`).join('')
+    +(sorted.length>5?`<div style="font-size:10px;color:var(--text-light);margin-top:4px">+${sorted.length-5} more</div>`:'');
+}
+
 function addLitterLocEntry(lid){
   const l=getL(lid);if(!l)return;
-  const date=document.getElementById(`litloc-date-${lid}`)?.value;
   const location=document.getElementById(`litloc-place-${lid}`)?.value.trim();
   const notes=document.getElementById(`litloc-notes-${lid}`)?.value.trim();
   if(!date||!location){toast('Enter a date and location');return;}
@@ -3073,16 +3106,14 @@ function addLocEntry(){
   const location=document.getElementById('loc-new-place').value.trim();
   const notes=document.getElementById('loc-new-notes').value.trim();
   if(!date||!location){toast('Enter a date and location');return;}
-  // Write directly to the source object
   if(!_locEnt.ref.locationLog)_locEnt.ref.locationLog=[];
-  // Remove any existing entry on same date, then add new one
   _locEnt.ref.locationLog=_locEnt.ref.locationLog.filter(e=>e.date!==date);
   _locEnt.ref.locationLog.push({id:uid(),date,location,notes});
   addLocationName(location);
   saveHerd();
   renderLocLog();
   renderHerd();
-  // Clear the input fields for next entry
+  if(_locEnt.type==='litter')refreshLitterLocSummary(_locEnt.ref.id);
   document.getElementById('loc-new-place').value='';
   document.getElementById('loc-new-notes').value='';
   toast(`Location recorded: ${location} on ${fmtDate(date)}`);
@@ -3097,6 +3128,7 @@ function editLocEntry(entryId, field, val){
   saveHerd();
   renderLocLog();
   if(field==='date')renderHerd();
+  if(_locEnt.type==='litter')refreshLitterLocSummary(_locEnt.ref.id);
 }
 
 
@@ -3104,6 +3136,7 @@ function deleteLocEntry(entryId){
   if(!_locEnt)return;
   _locEnt.ref.locationLog=(_locEnt.ref.locationLog||[]).filter(e=>e.id!==entryId);
   saveHerd();renderLocLog();renderHerd();
+  if(_locEnt.type==='litter')refreshLitterLocSummary(_locEnt.ref.id);
 }
 
 // ── BOAR MANAGEMENT ───────────────────────────────────────────────────────────
