@@ -1144,8 +1144,8 @@ function rebuildTabs(l){
       <span style="margin-left:auto;font-size:10px;color:var(--text-light);font-family:'DM Mono',monospace">Days 1–3: ≥1.8 oz/day · Days 4–7: ≥2.8 oz/day · Days 8–21: ≥4.6 oz/day · Day 22+: ≥6.2 oz/day</span>
     </div>
     <div class="tw"><table><thead><tr>
-      <th>#</th><th>Status</th><th>Sex</th><th>Time Born</th>
-      <th>Birth Wt (oz)</th><th>Color / Markings</th><th>Ear Notch</th><th>Nipples</th><th>Castration Date</th><th>Designation</th><th>Notes</th><th></th>
+      <th>#</th><th>Status</th><th>Sex</th><th>Ear Notch</th>
+      <th>Color</th><th>Birth Wt</th><th>Nipples</th><th>Castration</th><th>Designation</th><th>Notes</th><th></th>
     </tr></thead><tbody id="bb-${l.id}"></tbody></table></div>
     <div style="margin-top:10px"><button class="btn btn-sm btn-success" onclick="addPiglet('${l.id}')">+ Add Piglet</button></div>
     <!-- Litter weight for birth -->
@@ -1341,7 +1341,7 @@ function rebuildTabs(l){
     </div>
     <div class="stitle">Piglet List (from Birth tab)</div>
     <div class="tw" style="margin-bottom:14px"><table><thead><tr>
-      <th>#</th><th>Status</th><th>Sex</th><th>Ear Notch</th><th>Color</th><th>Birth Wt</th><th>Nipples</th><th>Castration</th><th>Designation</th><th>Notes</th><th></th>
+      <th>#</th><th>Status</th><th>Sex</th><th>Ear Notch</th><th>Color</th><th>Birth Wt</th><th>Nipples</th><th>Designation</th><th>Notes</th>
     </tr></thead><tbody>${l.piglets.map(p=>`<tr>
       <td class="pnum">${p.num}</td>
       <td><span class="badge ${p.status==='alive'?'bg-gn':p.status==='dead'?'bg-rd':'bg-yw'}" style="font-size:10px">${p.status}</span></td>
@@ -3018,8 +3018,8 @@ function openLocModal(compositeId, name){
     if(ds&&p.departDate)ds.textContent=`✓ Departed ${fmtDate(p.departDate)} — ${p.departReason||'reason not set'}`;
     const na=document.getElementById('loc-animal-notes');if(na)na.value=p.notes||'';
   }
-  refreshLocDatalist();
   renderLocLog();
+  refreshLocDatalist(); // must run after renderLocLog so inputs exist in DOM
   openModal('loc-modal');
 }
 
@@ -3057,11 +3057,12 @@ function renderLocLog(){
   }
   con.innerHTML=sorted.map(e=>`<div class="loc-entry">
     <input type="date" value="${e.date}" style="font-size:11px;padding:2px 4px;font-family:'DM Mono',monospace;border:1px solid var(--border);border-radius:4px"
-      onchange="editLocEntry('${e.id}','date',this.value)">
-    <input type="text" value="${e.location}" list="loc-datalist" style="font-size:12px;font-weight:600;padding:2px 6px;border:1px solid var(--border);border-radius:4px"
+      onblur="editLocEntry('${e.id}','date',this.value)">
+    <input type="text" value="${e.location}" list="loc-datalist" autocomplete="off" style="font-size:12px;font-weight:600;padding:2px 6px;border:1px solid var(--border);border-radius:4px"
+      onblur="editLocEntry('${e.id}','location',this.value)"
       onchange="editLocEntry('${e.id}','location',this.value)">
     <input type="text" value="${e.notes||''}" placeholder="Notes…" style="font-size:11px;color:var(--text-light);padding:2px 6px;border:1px solid var(--border);border-radius:4px"
-      onchange="editLocEntry('${e.id}','notes',this.value)">
+      onblur="editLocEntry('${e.id}','notes',this.value)">
     <button class="btn btn-sm btn-danger" style="padding:2px 7px" onclick="deleteLocEntry('${e.id}')">✕</button>
   </div>`).join('');
 }
@@ -3093,7 +3094,9 @@ function editLocEntry(entryId, field, val){
   if(!entry)return;
   entry[field]=val;
   if(field==='location')addLocationName(val);
-  saveHerd();renderHerd();
+  saveHerd();
+  renderLocLog();
+  if(field==='date')renderHerd();
 }
 
 
