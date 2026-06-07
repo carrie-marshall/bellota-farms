@@ -92,9 +92,6 @@ td input[type="time"]{width:82px;}td input[type="date"]{width:122px;}td select{w
 .gr{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);}
 .gn{background:var(--gray-bg);color:var(--text-light);border:1px solid var(--border);}
 .prev-wt{font-family:'DM Mono',monospace;font-size:10px;padding:2px 4px;border-radius:3px;text-align:center;}
-.legend{display:flex;gap:10px;flex-wrap:wrap;padding:8px 12px;background:var(--gray-bg);border-radius:6px;margin-bottom:10px;font-size:11px;align-items:center;}
-.li{display:flex;align-items:center;gap:4px;}
-.ld{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
 /* Vaccine */
 .vax-hdr th{background:var(--blue-mid);}
 tr.vdone td{background:rgba(26,92,48,.04)!important;}
@@ -1105,12 +1102,6 @@ function rebuildTabs(l){
 
   panelsEl.innerHTML+=`
   <div class="tab-panel${activeTab==='birth'?' active':''}" data-panel="birth">
-    <div class="legend">
-      <span style="font-size:11px;font-weight:600;color:var(--text-mid)">IBÉRICO GROWTH:</span>
-      <span class="li"><span class="ld" style="background:var(--green-bg);border:1px solid var(--green-bd)"></span>On track (age-tiered)</span>
-      <span class="li"><span class="ld" style="background:var(--yellow-bg);border:1px solid var(--yellow-bd)"></span>Below target</span>
-      <span class="li"><span class="ld" style="background:var(--red-bg);border:1px solid var(--red-bd)"></span>Concern</span>
-    </div>
     <div class="tw"><table><thead><tr>
       <th>#</th><th>Status</th><th>Sex</th><th>Ear Notch</th>
       <th>Color</th><th>Birth Wt</th><th>Nipples</th><th>Castration</th><th>Designation</th><th>Notes</th><th></th>
